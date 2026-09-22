@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { ChefHat, Heart, Menu, X, Shuffle, User, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChefHat, Heart, Menu, X, Shuffle, User, LogOut, ChevronDown, Utensils, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { MEAL_TYPES, CUISINES } from './CategoryFilter.jsx';
 
 /**
  * Navbar Component
  *
  * Logged out state:
- * - Home / Recipes
+ * - Home / Browse Recipes (Dropdown)
  * - Log In
  * - Sign Up
  *
  * Logged in state:
- * - Home / Recipes
+ * - Home / Browse Recipes (Dropdown)
  * - Favorites with dynamic count badge
  * - Profile (or user avatar/email)
  * - Log Out
@@ -35,6 +36,8 @@ import { useAuth } from '../context/AuthContext.jsx';
  * @param {'recipes'|'favorites'|'profile'} [props.currentView='recipes']
  * @param {Function} [props.onRandomClick]
  * @param {Function} [props.onAboutClick]
+ * @param {Function} [props.onSelectFilter]
+ * @param {Object} [props.activeFilter]
  */
 export default function Navbar({
   favoriteCount = 0,
@@ -46,10 +49,15 @@ export default function Navbar({
   currentView = 'recipes',
   onRandomClick,
   onAboutClick,
+  onSelectFilter,
+  activeFilter,
 }) {
   const { user, isAuthenticated, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isBrowseOpen, setIsBrowseOpen] = useState(false);
+  const [isMobileBrowseOpen, setIsMobileBrowseOpen] = useState(false);
+  const browseDropdownRef = useRef(null);
 
   // Monitor scroll position to apply dynamic subtle shadow and border when scrolling
   useEffect(() => {
@@ -65,20 +73,53 @@ export default function Navbar({
     };
   }, []);
 
-  // Close mobile menu on Esc key press
+  // Close desktop dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (browseDropdownRef.current && !browseDropdownRef.current.contains(e.target)) {
+        setIsBrowseOpen(false);
+      }
+    };
+    if (isBrowseOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isBrowseOpen]);
+
+  // Close mobile menu and dropdown on Esc key press
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isMobileMenuOpen) {
-        setIsMobileMenuOpen(false);
+      if (e.key === 'Escape') {
+        if (isBrowseOpen) setIsBrowseOpen(false);
+        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, isBrowseOpen]);
 
   const handleNavHome = () => {
+    setIsBrowseOpen(false);
     setIsMobileMenuOpen(false);
     if (onHomeClick) onHomeClick();
+  };
+
+  const handleSelectBrowseOption = (type, value) => {
+    setIsBrowseOpen(false);
+    setIsMobileMenuOpen(false);
+    if (onSelectFilter) {
+      onSelectFilter(type, value);
+    } else if (onHomeClick) {
+      onHomeClick();
+    }
+    setTimeout(() => {
+      const targetElem = document.getElementById('category-filter-section') || document.getElementById('recipe-grid-section');
+      if (targetElem) {
+        targetElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 80);
   };
 
   const handleNavFavorites = () => {
@@ -149,20 +190,106 @@ export default function Navbar({
             aria-label="Main Navigation"
             className="hidden md:flex items-center gap-1.5 lg:gap-2"
           >
-            {/* Recipes */}
-            <button
-              type="button"
-              id="navbar-link-recipes"
-              onClick={handleNavHome}
-              aria-current={currentView === 'recipes' ? 'page' : undefined}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
-                currentView === 'recipes'
-                  ? 'bg-[#EAF4FF] text-[#003B73] font-semibold'
-                  : 'text-[#212529] hover:bg-[#F5F7FA] hover:text-[#003B73]'
-              }`}
-            >
-              <span>Recipes</span>
-            </button>
+            {/* Browse Recipes Dropdown Menu */}
+            <div className="relative" ref={browseDropdownRef}>
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  id="navbar-link-recipes"
+                  onClick={handleNavHome}
+                  aria-current={currentView === 'recipes' && !isBrowseOpen ? 'page' : undefined}
+                  className={`px-3 py-1.5 rounded-l-md text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
+                    currentView === 'recipes' && !isBrowseOpen
+                      ? 'bg-[#EAF4FF] text-[#003B73] font-semibold'
+                      : 'text-[#212529] hover:bg-[#F5F7FA] hover:text-[#003B73]'
+                  }`}
+                >
+                  <span>Browse Recipes</span>
+                </button>
+                <button
+                  type="button"
+                  id="navbar-browse-dropdown-toggle"
+                  aria-haspopup="true"
+                  aria-expanded={isBrowseOpen}
+                  aria-label="Toggle Browse Recipes Dropdown"
+                  onClick={() => setIsBrowseOpen((prev) => !prev)}
+                  className={`px-1.5 py-1.5 rounded-r-md text-sm transition-colors duration-150 cursor-pointer border-l border-[#E2E8F0] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] ${
+                    isBrowseOpen
+                      ? 'bg-[#0056B3] text-white'
+                      : 'text-[#212529] hover:bg-[#F5F7FA] hover:text-[#003B73]'
+                  }`}
+                >
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${isBrowseOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+              </div>
+
+              {/* Mega Dropdown Popover */}
+              {isBrowseOpen && (
+                <div
+                  id="navbar-browse-dropdown-menu"
+                  role="menu"
+                  aria-label="Browse Recipes Dropdown"
+                  className="absolute left-0 mt-1.5 w-[380px] bg-white rounded-xl border border-[#CBD5E1] shadow-xl z-50 p-3.5"
+                >
+                  <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-[#F1F5F9]">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#003B73]">
+                      <Utensils size={13} className="text-[#0056B3]" />
+                      <span>Browse Recipes</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectBrowseOption('mealType', 'All')}
+                      className="text-xs font-medium text-[#0056B3] hover:underline cursor-pointer"
+                    >
+                      Show All Dishes
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Meal Types Column */}
+                    <div>
+                      <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">
+                        Meal Types
+                      </div>
+                      <div className="space-y-0.5 max-h-52 overflow-y-auto pr-1">
+                        {MEAL_TYPES.filter((m) => m.value !== 'All').map((meal) => (
+                          <button
+                            key={meal.id}
+                            type="button"
+                            onClick={() => handleSelectBrowseOption('mealType', meal.value)}
+                            className="w-full text-left px-2 py-1 rounded text-xs text-[#334155] hover:bg-[#EAF4FF] hover:text-[#003B73] transition-colors cursor-pointer truncate font-medium"
+                          >
+                            {meal.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Cuisines Column */}
+                    <div>
+                      <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1.5">
+                        Cuisines
+                      </div>
+                      <div className="space-y-0.5 max-h-52 overflow-y-auto pr-1">
+                        {CUISINES.filter((c) => c.value !== 'All').map((cuisine) => (
+                          <button
+                            key={cuisine.id}
+                            type="button"
+                            onClick={() => handleSelectBrowseOption('cuisine', cuisine.value)}
+                            className="w-full text-left px-2 py-1 rounded text-xs text-[#334155] hover:bg-[#EAF4FF] hover:text-[#003B73] transition-colors cursor-pointer truncate font-medium"
+                          >
+                            {cuisine.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* If Authenticated: Show Favorites and Profile */}
             {isAuthenticated ? (
@@ -334,28 +461,85 @@ export default function Navbar({
             Menu
           </div>
 
-          {/* Mobile Home / Recipes */}
-          <button
-            type="button"
-            id="mobile-link-recipes"
-            onClick={handleNavHome}
-            aria-current={currentView === 'recipes' ? 'page' : undefined}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] ${
-              currentView === 'recipes'
-                ? 'bg-[#0056B3] text-white font-semibold shadow-xs'
-                : 'text-[#212529] hover:bg-[#EAF4FF]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Utensils size={17} aria-hidden="true" className={currentView === 'recipes' ? 'text-white' : 'text-[#0056B3]'} />
-              <span>Recipes / Home</span>
+          {/* Mobile Home / Browse Recipes with Collapsible Dropdown */}
+          <div className="rounded-xl border border-[#E2E8F0] overflow-hidden bg-white">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                id="mobile-link-recipes"
+                onClick={handleNavHome}
+                className={`flex-1 flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium transition-colors cursor-pointer text-left ${
+                  currentView === 'recipes' && !isMobileBrowseOpen
+                    ? 'text-[#0056B3] font-semibold bg-[#EAF4FF]'
+                    : 'text-[#212529] hover:bg-[#F5F7FA]'
+                }`}
+              >
+                <Utensils size={17} className="text-[#0056B3]" />
+                <span>Browse Recipes</span>
+              </button>
+              <button
+                type="button"
+                id="mobile-browse-dropdown-toggle"
+                onClick={() => setIsMobileBrowseOpen((prev) => !prev)}
+                aria-label="Toggle Browse Recipes categories"
+                className="px-3.5 py-2.5 text-[#64748B] hover:text-[#003B73] transition-colors cursor-pointer"
+              >
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-200 ${isMobileBrowseOpen ? 'rotate-180 text-[#0056B3]' : ''}`}
+                />
+              </button>
             </div>
-            {currentView === 'recipes' && (
-              <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-md">
-                Active
-              </span>
+
+            {/* Mobile Dropdown Sub-menu */}
+            {isMobileBrowseOpen && (
+              <div className="bg-[#F8FAFC] border-t border-[#E2E8F0] p-3 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => handleSelectBrowseOption('mealType', 'All')}
+                  className="w-full py-1.5 px-2.5 text-xs font-semibold text-[#0056B3] bg-white rounded-md border border-[#E2E8F0] text-left hover:bg-[#EAF4FF] cursor-pointer"
+                >
+                  All Recipes (Show All Dishes)
+                </button>
+
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-1.5">
+                    Meal Types
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {MEAL_TYPES.filter((m) => m.value !== 'All').map((meal) => (
+                      <button
+                        key={`mob-${meal.id}`}
+                        type="button"
+                        onClick={() => handleSelectBrowseOption('mealType', meal.value)}
+                        className="py-1 px-2 text-xs bg-white rounded border border-[#E2E8F0] text-[#334155] text-left truncate hover:border-[#0056B3] cursor-pointer"
+                      >
+                        {meal.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-1.5">
+                    Cuisines
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {CUISINES.filter((c) => c.value !== 'All').map((cuisine) => (
+                      <button
+                        key={`mob-${cuisine.id}`}
+                        type="button"
+                        onClick={() => handleSelectBrowseOption('cuisine', cuisine.value)}
+                        className="py-1 px-2 text-xs bg-white rounded border border-[#E2E8F0] text-[#334155] text-left truncate hover:border-[#0056B3] cursor-pointer"
+                      >
+                        {cuisine.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* Authenticated Links for Mobile */}
           {isAuthenticated ? (

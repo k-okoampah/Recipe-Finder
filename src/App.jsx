@@ -68,7 +68,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentView]);
 
-  // Load initial discovery recipes from TheMealDB
+  // Load initial discovery recipes from TheMealDB and handle shared recipe deep links
   useEffect(() => {
     let isMounted = true;
 
@@ -77,6 +77,18 @@ export default function App() {
         const initialMeals = await searchMealsByName('');
         if (isMounted && initialMeals && initialMeals.length > 0) {
           setRecipes(initialMeals);
+        }
+
+        // Check for deep-linked recipe from shared URL
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const sharedRecipeId = params.get('recipe');
+          if (sharedRecipeId) {
+            const detailedMeal = await getMealDetailsById(sharedRecipeId);
+            if (isMounted && detailedMeal) {
+              setSelectedRecipe(detailedMeal);
+            }
+          }
         }
       } catch (err) {
         console.warn('Initial data load used fallback:', err);
@@ -89,6 +101,23 @@ export default function App() {
       isMounted = false;
     };
   }, []);
+
+  // Synchronize browser URL query param with selected recipe for shareable deep links
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        if (selectedRecipe?.idMeal) {
+          url.searchParams.set('recipe', selectedRecipe.idMeal);
+        } else {
+          url.searchParams.delete('recipe');
+        }
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch {
+      // Safe fallback if history API is restricted
+    }
+  }, [selectedRecipe]);
 
   // Main Search Handler
   const handleSearch = useCallback(async (query) => {
@@ -251,6 +280,8 @@ export default function App() {
         <Navbar
           currentView={currentView}
           favoriteCount={favoriteCount}
+          activeFilter={activeFilter}
+          onSelectFilter={handleFilterSelect}
           onHomeClick={() => {
             setCurrentView('recipes');
             handleReset();

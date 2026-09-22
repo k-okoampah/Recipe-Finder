@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Youtube, ExternalLink, Check, Heart, Clock, Printer } from 'lucide-react';
+import { X, Youtube, ExternalLink, Check, Heart, Clock, Printer, Share2, Flame } from 'lucide-react';
 import { extractIngredients } from '../services/recipeApi.js';
 import StarRating from './StarRating.jsx';
+import NutritionalInfo from './NutritionalInfo.jsx';
+import { calculateRecipeNutrition } from '../utils/nutrition.js';
 
 const FALLBACK_RECIPE_IMAGE =
   'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
@@ -27,7 +29,7 @@ function parseInstructions(text) {
  * 1. Recipe Image
  * 2. Recipe Title
  * 3. Category / Cuisine
- * 4. Favorite Action & Print Recipe
+ * 4. Favorite Action, Share Action & Print Recipe
  * 5. Ingredients (scannable checklist / print list)
  * 6. Instructions (scannable steps / print steps)
  * 7. YouTube Video
@@ -43,10 +45,62 @@ export default function RecipeDetails({
   const [imageSrc, setImageSrc] = useState(recipe.strMealThumb || FALLBACK_RECIPE_IMAGE);
   const [imageError, setImageError] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState({});
+  const [copied, setCopied] = useState(false);
   const closeBtnRef = useRef(null);
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const getShareUrl = () => {
+    try {
+      const url = new URL(window.location.href);
+      if (recipe?.idMeal) {
+        url.searchParams.set('recipe', recipe.idMeal);
+      }
+      return url.toString();
+    } catch {
+      return typeof window !== 'undefined' ? window.location.href : '';
+    }
+  };
+
+  const handleShare = async () => {
+    const shareUrl = getShareUrl();
+    const recipeTitle = recipe.strMeal || 'Recipe';
+    const categoryInfo = [recipe.strCategory, recipe.strArea ? `${recipe.strArea} Cuisine` : null]
+      .filter(Boolean)
+      .join(' · ');
+
+    const shareData = {
+      title: `${recipeTitle} | Recipe Finder`,
+      text: `Check out this delicious recipe for ${recipeTitle}${categoryInfo ? ` (${categoryInfo})` : ''}!`,
+      url: shareUrl,
+    };
+
+    // 1. Native Browser Web Share API
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
+          // User dismissed or canceled share sheet
+          return;
+        }
+        console.warn('Native share dialog encountered an issue, falling back to clipboard copy:', err);
+      }
+    }
+
+    // 2. Fallback for browsers or desktop contexts without Web Share support
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
+    } catch (clipErr) {
+      console.warn('Clipboard write error:', clipErr);
+    }
   };
 
   useEffect(() => {
@@ -87,6 +141,7 @@ export default function RecipeDetails({
   const ingredients = extractIngredients(recipe);
   const instructions = parseInstructions(recipe.strInstructions);
   const youtubeEmbedId = getYouTubeEmbedId(recipe.strYoutube);
+  const quickNutrition = calculateRecipeNutrition(recipe, 1);
 
   const title = recipe.strMeal || 'Recipe';
   const category = recipe.strCategory || 'General';
@@ -111,6 +166,26 @@ export default function RecipeDetails({
             Recipe Details
           </span>
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              id="recipe-details-header-share"
+              onClick={handleShare}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[#0056B3] hover:text-[#003B73] hover:bg-[#EAF4FF] rounded-md transition-colors cursor-pointer border border-transparent hover:border-[#0056B3]/20"
+              aria-label={`Share ${title}`}
+              title="Share Recipe"
+            >
+              {copied ? (
+                <>
+                  <Check size={15} className="text-emerald-600" aria-hidden="true" />
+                  <span className="hidden sm:inline text-emerald-700">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 size={15} aria-hidden="true" />
+                  <span className="hidden sm:inline">Share</span>
+                </>
+              )}
+            </button>
             <button
               type="button"
               id="recipe-details-header-print"
@@ -189,16 +264,25 @@ export default function RecipeDetails({
               {area && (
                 <span><strong>Cuisine:</strong> {area}</span>
               )}
-              <span><strong>Servings:</strong> 4 – 6 servings</span>
+              <span><strong>Servings:</strong> {recipe.servings || '4 – 6 servings'}</span>
+              {quickNutrition && (
+                <span><strong>Calories:</strong> {quickNutrition.calories} kcal / serving</span>
+              )}
             </div>
 
             {/* 4. Favorite Action, Print Action & Meta (Screen Only) */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2 pb-4 border-b border-[#E2E8F0] print:hidden">
-              <div className="flex items-center gap-3 text-xs text-[#6c757d]">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-[#6c757d]">
                 {recipe.prepTime && (
                   <span className="flex items-center gap-1">
                     <Clock size={13} className="text-[#0056B3]" />
                     <span>{recipe.prepTime}</span>
+                  </span>
+                )}
+                {quickNutrition && (
+                  <span className="flex items-center gap-1 text-[#003B73] font-medium bg-[#F1F5F9] px-2 py-0.5 rounded-md">
+                    <Flame size={13} className="text-[#D97706]" />
+                    <span>{quickNutrition.calories} kcal / serving</span>
                   </span>
                 )}
                 {recipe.strSource && (
@@ -214,7 +298,33 @@ export default function RecipeDetails({
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Social Media Share Button */}
+                <button
+                  type="button"
+                  id="recipe-details-action-share"
+                  onClick={handleShare}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer border ${
+                    copied
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      : 'bg-white text-[#212529] border-[#E2E8F0] hover:bg-[#EAF4FF] hover:border-[#0056B3] hover:text-[#0056B3]'
+                  }`}
+                  aria-label={`Share ${title}`}
+                  title="Share this recipe via native browser dialog"
+                >
+                  {copied ? (
+                    <>
+                      <Check size={14} className="text-emerald-600" aria-hidden="true" />
+                      <span>Link Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 size={14} className="text-[#0056B3]" aria-hidden="true" />
+                      <span>Share</span>
+                    </>
+                  )}
+                </button>
+
                 {/* Print Recipe Button */}
                 <button
                   type="button"
@@ -330,7 +440,10 @@ export default function RecipeDetails({
             )}
           </div>
 
-          {/* 6. Instructions Section */}
+          {/* 6. Nutritional Information Section */}
+          <NutritionalInfo recipe={recipe} />
+
+          {/* 7. Instructions Section */}
           <div className="print-avoid-break">
             <h2 className="font-serif font-bold text-lg text-[#003B73] print:text-black mb-3 print:mb-2 border-b print:border-b-2 print:border-gray-800 pb-1.5">
               Instructions
