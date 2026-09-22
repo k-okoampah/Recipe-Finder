@@ -39,43 +39,40 @@ export default function SearchBar({
       <label htmlFor="recipe-search-input" className="sr-only">
         Search recipes by name or ingredient
       </label>
-      <div className="relative flex items-center bg-white rounded-xl border border-[#E2E8F0] shadow-xs hover:border-[#cbd5e1] focus-within:border-[#0056B3] focus-within:ring-2 focus-within:ring-[#0056B3]/15 transition-all p-1.5 sm:p-2">
-        {/* Search Icon in Primary Blue #0056B3 */}
-        <div className="pl-3 sm:pl-3.5 pr-1.5 sm:pr-2 text-[#0056B3] shrink-0" aria-hidden="true">
-          <Search size={20} className="text-[#0056B3] sm:w-[22px] sm:h-[22px]" />
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#94A3B8]" aria-hidden="true">
+            <Search size={16} />
+          </div>
+
+          <input
+            id="recipe-search-input"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={placeholder}
+            className="w-full pl-9 pr-9 py-2.5 bg-white rounded-md border border-[#E2E8F0] hover:border-[#CBD5E1] text-sm text-[#0F172A] placeholder:text-[#94A3B8] transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#0056B3] focus:border-[#0056B3]"
+          />
+
+          {query && (
+            <button
+              type="button"
+              id="clear-search-btn"
+              onClick={handleClear}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#94A3B8] hover:text-[#0F172A] transition-colors cursor-pointer"
+              aria-label="Clear search input"
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          )}
         </div>
 
-        {/* Input */}
-        <input
-          id="recipe-search-input"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={placeholder}
-          className="w-full min-w-0 flex-1 py-2.5 sm:py-3 pr-2 text-[#212529] placeholder:text-[#6c757d]/70 text-sm sm:text-base font-sans bg-transparent border-none outline-hidden"
-        />
-
-        {/* Clear Button */}
-        {query && (
-          <button
-            type="button"
-            id="clear-search-btn"
-            onClick={handleClear}
-            className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center mr-1 text-[#6c757d] hover:text-[#003B73] rounded-full hover:bg-[#EAF4FF] transition-colors cursor-pointer shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3]"
-            aria-label="Clear search input"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
-        )}
-
-        {/* Submit Button in Primary Blue #0056B3 */}
         <button
           type="submit"
           id="submit-search-btn"
-          className="shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 min-h-[44px] rounded-xl bg-[#0056B3] hover:bg-[#003B73] active:scale-[0.98] text-white font-semibold text-sm sm:text-base transition-all duration-150 cursor-pointer shadow-xs flex items-center justify-center gap-1.5 sm:gap-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
+          className="px-5 py-2.5 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-medium text-sm transition-colors cursor-pointer inline-flex items-center justify-center shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
         >
-          <span>Search</span>
-          <ArrowRight size={16} aria-hidden="true" className="hidden sm:inline" />
+          Search
         </button>
       </div>
     </form>

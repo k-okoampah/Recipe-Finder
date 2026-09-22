@@ -157,3 +157,85 @@ body {
 .btn-outline:hover {
   background-color: var(--brand-light-blue);
 }
+
+/* ==========================================================================
+   Printer-Friendly Stylesheet (@media print)
+   Provides a clean, distraction-free view for recipes without navigation,
+   modals, sidebars, interactive controls, or ads.
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 1.2cm 1.5cm;
+    size: auto;
+  }
+
+  html, body {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide navigation, footers, interactive elements, scrollbars, ads, and floating components */
+  nav,
+  header,
+  footer,
+  #hero-section,
+  #category-filter-section,
+  #recipe-grid-section,
+  #recipe-grid-empty-search,
+  #recipe-grid-empty,
+  #site-footer,
+  #scroll-to-top-btn,
+  .no-print,
+  .print-hidden,
+  [data-print-hidden="true"] {
+    display: none !important;
+  }
+
+  /* Unfold modal container into natural document flow */
+  #recipe-details-modal {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    display: block !important;
+    overflow: visible !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+  }
+
+  #recipe-details-modal > div {
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    display: block !important;
+  }
+
+  /* Prevent awkward page breaks within ingredient groups or instructions */
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Clean up links for paper printing */
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+}

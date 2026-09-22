@@ -16,18 +16,17 @@ import {
   searchMealsByName,
   getMealDetailsById,
   getMealsByCategory,
+  getMealsByArea,
   getRandomMeal,
 } from './services/recipeApi.js';
 import { MOCK_RECIPES } from './data/mockRecipes.js';
-
-const CATEGORIES = ['All', 'Ghanaian', 'Chicken', 'Beef', 'Seafood', 'Vegetarian', 'Dessert'];
 
 export default function App() {
   const { isAuthenticated } = useAuth();
 
   // Store results in React state
   const [recipes, setRecipes] = useState(MOCK_RECIPES);
-  const [categories] = useState(CATEGORIES);
+  const [activeFilter, setActiveFilter] = useState({ type: 'mealType', value: 'All' });
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
@@ -41,6 +40,9 @@ export default function App() {
   // Loading state & error state
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Mobile-only Featured Recipe dismissal (React state only, reset on page reload)
+  const [isMobileFeaturedClosed, setIsMobileFeaturedClosed] = useState(false);
 
   // Reusable favorites management hook
   const {
@@ -99,6 +101,7 @@ export default function App() {
 
     setSearchQuery(trimmed);
     setCurrentView('recipes');
+    setActiveFilter({ type: 'mealType', value: 'All' });
     setSelectedCategory('All');
     setErrorMessage(null);
     setLoading(true);
@@ -115,30 +118,39 @@ export default function App() {
     }
   }, []);
 
-  // Handle Category Filtering
-  const handleCategorySelect = useCallback(async (catName) => {
-    setSelectedCategory(catName);
+  // Handle Category / Cuisine Filter Selection
+  const handleFilterSelect = useCallback(async (type, value) => {
+    setActiveFilter({ type, value });
+    setSelectedCategory(value);
     setCurrentView('recipes');
     setSearchQuery('');
     setErrorMessage(null);
     setLoading(true);
 
     try {
-      if (catName === 'All') {
+      if (value === 'All') {
         const defaultMeals = await searchMealsByName('');
         setRecipes(defaultMeals.length > 0 ? defaultMeals : MOCK_RECIPES);
+      } else if (type === 'cuisine') {
+        const cuisineMeals = await getMealsByArea(value);
+        setRecipes(cuisineMeals || []);
       } else {
-        const categoryMeals = await getMealsByCategory(catName);
+        const categoryMeals = await getMealsByCategory(value);
         setRecipes(categoryMeals || []);
       }
     } catch (err) {
-      console.warn('Category fetch error:', err);
+      console.warn('Filter fetch error:', err);
       setErrorMessage('Something went wrong while loading recipes. Please try again.');
       setRecipes([]);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Backward compatible handler
+  const handleCategorySelect = useCallback((catName) => {
+    handleFilterSelect('mealType', catName);
+  }, [handleFilterSelect]);
 
   // Selecting a recipe: ensure full details (ingredients + instructions) are loaded
   const handleSelectRecipe = useCallback(async (recipe) => {
@@ -186,6 +198,7 @@ export default function App() {
   // Reset to default
   const handleReset = useCallback(async () => {
     setSearchQuery('');
+    setActiveFilter({ type: 'mealType', value: 'All' });
     setSelectedCategory('All');
     setCurrentView('recipes');
     setErrorMessage(null);
@@ -205,53 +218,59 @@ export default function App() {
   const handleRetry = useCallback(() => {
     if (searchQuery) {
       handleSearch(searchQuery);
-    } else if (selectedCategory !== 'All') {
-      handleCategorySelect(selectedCategory);
+    } else if (activeFilter.value !== 'All') {
+      handleFilterSelect(activeFilter.type, activeFilter.value);
     } else {
       handleReset();
     }
-  }, [searchQuery, selectedCategory, handleSearch, handleCategorySelect, handleReset]);
+  }, [searchQuery, activeFilter, handleSearch, handleFilterSelect, handleReset]);
 
   const gridTitle = searchQuery
     ? `Dishes Matching "${searchQuery}"`
-    : selectedCategory === 'Ghanaian'
-    ? 'Popular Ghanaian Dishes'
-    : selectedCategory !== 'All'
-    ? `Artisan ${selectedCategory} Recipes`
+    : activeFilter.value !== 'All'
+    ? activeFilter.type === 'cuisine'
+      ? `${activeFilter.value} Cuisine (${recipes.length})`
+      : `${activeFilter.value} Dishes (${recipes.length})`
     : 'Chef’s Seasonal Showcase & Ghanaian Classics';
 
   return (
     <div
       id="recipe-finder-app"
-      className="min-h-screen flex flex-col font-sans bg-[#F5F7FA] text-[#212529] antialiased w-full max-w-full overflow-x-clip"
+      className="min-h-screen flex flex-col font-sans bg-[#F5F7FA] text-[#212529] antialiased w-full max-w-full overflow-x-clip print:bg-white print:overflow-visible"
     >
       {/* Skip to Main Content Link for Keyboard Accessibility */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-[#0056B3] focus:text-white focus:font-semibold focus:rounded-xl focus:shadow-xl focus:outline-hidden focus:ring-2 focus:ring-[#FFC107]"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-[#0056B3] focus:text-white focus:font-semibold focus:rounded-xl focus:shadow-xl focus:outline-hidden focus:ring-2 focus:ring-[#FFC107] print:hidden"
       >
         Skip to main content
       </a>
 
       {/* Visual Design System Top Navigation */}
-      <Navbar
-        currentView={currentView}
-        favoriteCount={favoriteCount}
-        onHomeClick={() => {
-          setCurrentView('recipes');
-          handleReset();
-        }}
-        onFavoritesClick={() => {
-          setCurrentView((prev) => (prev === 'favorites' ? 'recipes' : 'favorites'));
-        }}
-        onProfileClick={() => setCurrentView('profile')}
-        onLoginClick={() => setAuthModalState({ isOpen: true, mode: 'login' })}
-        onSignUpClick={() => setAuthModalState({ isOpen: true, mode: 'signup' })}
-        onRandomClick={handleRandomMeal}
-        onAboutClick={() => setIsAboutOpen(true)}
-      />
+      <div className="print:hidden">
+        <Navbar
+          currentView={currentView}
+          favoriteCount={favoriteCount}
+          onHomeClick={() => {
+            setCurrentView('recipes');
+            handleReset();
+          }}
+          onFavoritesClick={() => {
+            setCurrentView((prev) => (prev === 'favorites' ? 'recipes' : 'favorites'));
+          }}
+          onProfileClick={() => setCurrentView('profile')}
+          onLoginClick={() => setAuthModalState({ isOpen: true, mode: 'login' })}
+          onSignUpClick={() => setAuthModalState({ isOpen: true, mode: 'signup' })}
+          onRandomClick={handleRandomMeal}
+          onAboutClick={() => setIsAboutOpen(true)}
+        />
+      </div>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-hidden">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={`flex-1 focus:outline-hidden ${selectedRecipe ? 'print:hidden' : ''}`}
+      >
         {currentView === 'profile' ? (
           /* User Profile View */
           <ProfileView
@@ -278,11 +297,14 @@ export default function App() {
               searchQuery={searchQuery}
               isLoading={loading}
               onSelectRecipe={handleSelectRecipe}
+              isMobileFeaturedClosed={isMobileFeaturedClosed}
+              onCloseMobileFeatured={() => setIsMobileFeaturedClosed(true)}
             />
 
-            {/* Category Filter Bar */}
+            {/* Category & Cuisine Filter Section */}
             <CategoryFilter
-              categories={categories}
+              activeFilter={activeFilter}
+              onSelectFilter={handleFilterSelect}
               selectedCategory={selectedCategory}
               onSelectCategory={handleCategorySelect}
               isLoading={loading}
@@ -317,36 +339,38 @@ export default function App() {
       )}
 
       {/* Authentication Dialog Modal (Login, Signup, Reset Password, Prompt) */}
-      <AuthModal
-        isOpen={authModalState.isOpen}
-        initialMode={authModalState.mode}
-        onClose={() => setAuthModalState((prev) => ({ ...prev, isOpen: false }))}
-        onSuccess={() => setAuthModalState((prev) => ({ ...prev, isOpen: false }))}
-      />
+      <div className="print:hidden">
+        <AuthModal
+          isOpen={authModalState.isOpen}
+          initialMode={authModalState.mode}
+          onClose={() => setAuthModalState((prev) => ({ ...prev, isOpen: false }))}
+          onSuccess={() => setAuthModalState((prev) => ({ ...prev, isOpen: false }))}
+        />
 
-      {/* Professional Responsive Footer */}
-      <Footer
-        onNavigateRecipes={() => {
-          setCurrentView('recipes');
-          handleReset();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onNavigateFavorites={() => {
-          setCurrentView('favorites');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onOpenAbout={() => setIsAboutOpen(true)}
-        favoriteCount={favoriteCount}
-      />
+        {/* Professional Responsive Footer */}
+        <Footer
+          onNavigateRecipes={() => {
+            setCurrentView('recipes');
+            handleReset();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onNavigateFavorites={() => {
+            setCurrentView('favorites');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenAbout={() => setIsAboutOpen(true)}
+          favoriteCount={favoriteCount}
+        />
 
-      {/* About Dialog Modal */}
-      <AboutModal
-        isOpen={isAboutOpen}
-        onClose={() => setIsAboutOpen(false)}
-      />
+        {/* About Dialog Modal */}
+        <AboutModal
+          isOpen={isAboutOpen}
+          onClose={() => setIsAboutOpen(false)}
+        />
 
-      {/* Floating Scroll to Top Arrow Button */}
-      <ScrollToTop />
+        {/* Floating Scroll to Top Arrow Button */}
+        <ScrollToTop />
+      </div>
     </div>
   );
 }

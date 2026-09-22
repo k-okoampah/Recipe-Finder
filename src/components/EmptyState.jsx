@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Heart, Search, RotateCcw, Sparkles } from 'lucide-react';
+import { Compass, Heart, Search, RotateCcw } from 'lucide-react';
 
 /**
  * Reusable EmptyState Component
@@ -41,7 +41,7 @@ export default function EmptyState({
 
   const presets = {
     'no-results': {
-      icon: <Search size={28} className="text-[#0056B3]" />,
+      icon: <Search size={24} className="text-[#0056B3]" />,
       defaultTitle: searchQuery
         ? `We couldn't find recipes matching "${searchQuery}"`
         : "We couldn't find that recipe. Try another ingredient or meal.",
@@ -51,7 +51,7 @@ export default function EmptyState({
       showSuggestions: true,
     },
     'no-favorites': {
-      icon: <Heart size={28} className="fill-[#FFC107] text-[#0056B3]" />,
+      icon: <Heart size={24} className="text-[#0056B3]" />,
       defaultTitle: "You haven't saved any recipes yet.",
       defaultDescription:
         'Explore dishes from around the world and tap the heart icon on any recipe to save it here for quick access.',
@@ -59,15 +59,15 @@ export default function EmptyState({
       showSuggestions: false,
     },
     'empty-search': {
-      icon: <Sparkles size={28} className="text-[#FFC107]" />,
-      defaultTitle: 'Looking for something delicious?',
+      icon: <Search size={24} className="text-[#0056B3]" />,
+      defaultTitle: 'Looking for something to cook?',
       defaultDescription:
-        'Type an ingredient, culinary technique, or dish name above to begin discovering recipes.',
+        'Type an ingredient, culinary technique, or dish name above to find recipes.',
       defaultActionText: 'Browse Recipes',
       showSuggestions: true,
     },
     generic: {
-      icon: <Compass size={28} className="text-[#0056B3]" />,
+      icon: <Compass size={24} className="text-[#0056B3]" />,
       defaultTitle: 'No recipes found in collection',
       defaultDescription:
         'Try browsing by category, searching with broader keywords, or reset your filters.',
@@ -92,10 +92,10 @@ export default function EmptyState({
     <div
       id={`empty-state-${type}`}
       role="status"
-      className="max-w-lg mx-auto my-8 sm:my-12 p-6 sm:p-8 text-center bg-white rounded-2xl border border-[#E2E8F0] shadow-sm animate-fade-in"
+      className="max-w-md mx-auto my-8 sm:my-12 p-6 sm:p-8 text-center bg-white rounded-xl border border-[#E2E8F0]"
     >
-      {/* Visual Accent Icon Badge */}
-      <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#EAF4FF] border border-[#d0e5ff] flex items-center justify-center shadow-xs shrink-0">
+      {/* Icon */}
+      <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-[#EAF4FF] border border-[#d0e5ff] flex items-center justify-center shrink-0">
         {displayIcon}
       </div>
 
@@ -105,15 +105,15 @@ export default function EmptyState({
       </h3>
 
       {/* Description */}
-      <p className="font-sans text-xs sm:text-sm text-[#6c757d] leading-relaxed mb-5 max-w-md mx-auto">
+      <p className="font-sans text-xs sm:text-sm text-[#6c757d] leading-relaxed mb-5 max-w-sm mx-auto">
         {displayDescription}
       </p>
 
       {/* Interactive Search Suggestions */}
       {shouldShowSuggestions && (
-        <div className="mb-6 pt-1">
-          <div className="text-[11px] uppercase tracking-wider font-semibold text-[#6c757d] mb-2">
-            Try searching for:
+        <div className="mb-6">
+          <div className="text-[11px] font-medium text-[#6c757d] mb-2">
+            Suggested searches:
           </div>
           <div className="flex flex-wrap items-center justify-center gap-1.5">
             {suggestions.map((item) => (
@@ -121,22 +121,22 @@ export default function EmptyState({
                 key={item}
                 type="button"
                 onClick={() => onSelectSuggestion(item)}
-                className="px-3 py-1 rounded-full text-xs font-semibold bg-[#F5F7FA] border border-[#E2E8F0] text-[#0056B3] hover:bg-[#0056B3] hover:text-white hover:border-[#0056B3] transition-colors cursor-pointer shadow-xs inline-flex items-center"
+                className="px-2.5 py-1 rounded-md text-xs font-medium bg-[#F5F7FA] border border-[#E2E8F0] text-[#0056B3] hover:bg-[#EAF4FF] hover:border-[#cbd5e1] transition-colors cursor-pointer inline-flex items-center"
               >
-                + {item}
+                {item}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Primary Action Button in Primary Blue #0056B3 */}
+      {/* Primary Action Button */}
       {handleAction && (
         <button
           type="button"
           id="empty-state-action-btn"
           onClick={handleAction}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] rounded-xl bg-[#0056B3] text-white text-xs sm:text-sm font-semibold hover:bg-[#003B73] transition-colors duration-150 cursor-pointer shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-[#0056B3] text-white text-xs sm:text-sm font-medium hover:bg-[#003B73] transition-colors cursor-pointer"
         >
           <RotateCcw size={14} />
           <span>{displayActionText}</span>

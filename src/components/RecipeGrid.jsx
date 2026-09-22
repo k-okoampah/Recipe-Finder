@@ -155,15 +155,15 @@ export default function RecipeGrid({
     >
       {/* Grid Header / Title & Count */}
       {title && (
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6 pb-3 border-b border-[#e7e2d9]">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6 pb-3 border-b border-[#E2E8F0]">
           <div>
-            <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-[#1b4332] tracking-tight">
+            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#003B73] tracking-tight">
               {title}
             </h2>
           </div>
-          <span className="text-xs sm:text-sm text-[#78716c] font-medium">
-            Showing <strong className="text-[#1c1917] font-semibold">{recipes.length}</strong>{' '}
-            {recipes.length === 1 ? 'dish' : 'dishes'}
+          <span className="text-xs sm:text-sm text-[#6c757d] font-medium">
+            Showing <strong className="text-[#212529] font-semibold">{recipes.length}</strong>{' '}
+            {recipes.length === 1 ? 'recipe' : 'recipes'}
           </span>
         </div>
       )}

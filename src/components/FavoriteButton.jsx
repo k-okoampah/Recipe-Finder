@@ -71,19 +71,19 @@ export default function FavoriteButton({
       aria-label={label}
       aria-pressed={isFavorite}
       title={label}
-      className={`inline-flex items-center justify-center rounded-full transition-all duration-200 cursor-pointer border shadow-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
+      className={`inline-flex items-center justify-center rounded-full transition-colors duration-150 cursor-pointer border focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
         isFavorite
           ? 'bg-[#FFF9E6] text-[#003B73] border-[#FFC107] hover:bg-[#fff3cc]'
-          : 'bg-white text-[#6c757d] border-[#E2E8F0] hover:text-[#0056B3] hover:border-[#0056B3] hover:bg-[#EAF4FF]'
+          : 'bg-white text-[#6c757d] border-[#E2E8F0] hover:text-[#0056B3] hover:border-[#94A3B8] hover:bg-[#F8FAFC]'
       } ${sizeClasses[size] || sizeClasses.md} ${className}`}
     >
       <Heart
         size={iconSizes[size] || 18}
         aria-hidden="true"
-        className={`transition-all duration-150 ${
+        className={`transition-colors duration-150 ${
           isFavorite
-            ? 'fill-[#FFC107] text-[#FFC107] scale-110 drop-shadow-xs'
-            : 'text-[#6c757d] group-hover:text-[#0056B3] hover:scale-115'
+            ? 'fill-[#FFC107] text-[#FFC107]'
+            : 'text-[#6c757d] group-hover:text-[#0056B3]'
         }`}
       />
     </button>

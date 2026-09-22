@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChefHat, Heart, Compass, ExternalLink } from 'lucide-react';
+import { ChefHat, ExternalLink } from 'lucide-react';
 
 /**
  * Footer Component
@@ -54,16 +54,15 @@ export default function Footer({
               Navigation
             </h2>
             <nav aria-label="Footer navigation">
-              <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                 <li>
                   <button
                     type="button"
                     id="footer-nav-recipes"
                     onClick={onNavigateRecipes}
-                    className="group inline-flex items-center gap-2 text-[#6c757d] hover:text-[#0056B3] font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-md py-1.5 sm:py-1 min-h-[36px]"
+                    className="text-[#6c757d] hover:text-[#0056B3] font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-md py-1"
                   >
-                    <Compass size={16} aria-hidden="true" className="text-[#6c757d] group-hover:text-[#0056B3] transition-colors shrink-0" />
-                    <span>Recipes</span>
+                    Recipes
                   </button>
                 </li>
                 <li>
@@ -71,12 +70,11 @@ export default function Footer({
                     type="button"
                     id="footer-nav-favorites"
                     onClick={onNavigateFavorites}
-                    className="group inline-flex items-center gap-2 text-[#6c757d] hover:text-[#0056B3] font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-md py-1.5 sm:py-1 min-h-[36px]"
+                    className="text-[#6c757d] hover:text-[#0056B3] font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-md py-1 inline-flex items-center gap-1.5"
                   >
-                    <Heart size={16} aria-hidden="true" className="text-[#6c757d] group-hover:text-[#FFC107] transition-colors shrink-0" />
                     <span>Favorites</span>
                     {favoriteCount > 0 && (
-                      <span className="ml-1 px-1.5 py-0.2 rounded-full text-[11px] font-bold bg-[#FFF9E6] text-[#003B73] border border-[#FFC107]">
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#EAF4FF] text-[#003B73]">
                         {favoriteCount}
                       </span>
                     )}
@@ -87,12 +85,9 @@ export default function Footer({
                     type="button"
                     id="footer-nav-about"
                     onClick={onOpenAbout}
-                    className="group inline-flex items-center gap-2 text-[#6c757d] hover:text-[#0056B3] font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-md py-1.5 sm:py-1 min-h-[36px]"
+                    className="text-[#6c757d] hover:text-[#0056B3] font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-md py-1"
                   >
-                    <span className="w-4 h-4 rounded-full border border-[#6c757d] group-hover:border-[#0056B3] flex items-center justify-center text-[10px] font-bold text-[#6c757d] group-hover:text-[#0056B3] transition-colors shrink-0" aria-hidden="true">
-                      i
-                    </span>
-                    <span>About</span>
+                    About
                   </button>
                 </li>
               </ul>
