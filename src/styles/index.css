@@ -1,6 +1,12 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
 :root {
+  /* Primary Font: Poppins across entire application */
+  --font-primary: 'Poppins', sans-serif;
+  --font-sans: var(--font-primary);
+  --font-serif: var(--font-primary);
+
   /* Brand Design System Tokens */
   --brand-primary: #0056B3;      /* Primary Blue: primary buttons, search button, active filters, links, icons, important CTAs */
   --brand-secondary: #003B73;    /* Dark Blue: headings, navbar accents, footer, hover states */
@@ -36,30 +42,35 @@
   --shadow-hover: 0 10px 24px -4px rgba(0, 59, 115, 0.12);
   --shadow-modal: 0 20px 45px -10px rgba(0, 59, 115, 0.22);
 
-  /* Modern typography */
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Fraunces', Georgia, serif;
-
   color-scheme: light;
 }
 
 body {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-primary);
   background-color: var(--brand-background);
   color: var(--brand-text);
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+button, input, select, textarea {
+  font-family: var(--font-primary);
+}
+
 /* Typography Utility Classes */
+.font-primary {
+  font-family: var(--font-primary);
+}
+
 .font-serif {
-  font-family: var(--font-serif);
+  font-family: var(--font-primary);
 }
 
 .font-sans {
-  font-family: var(--font-sans);
+  font-family: var(--font-primary);
 }
 
 /* Subtle animations */

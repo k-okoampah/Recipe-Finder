@@ -1,12 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Youtube, ExternalLink, Check, Heart, Clock, Printer, Share2, Flame } from 'lucide-react';
+import { X, Youtube, ExternalLink, Check, Heart, Clock, Printer, Share2 } from 'lucide-react';
 import { extractIngredients } from '../services/recipeApi.js';
 import StarRating from './StarRating.jsx';
 import NutritionalInfo from './NutritionalInfo.jsx';
 import { calculateRecipeNutrition } from '../utils/nutrition.js';
-
-const FALLBACK_RECIPE_IMAGE =
-  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
+import { NEUTRAL_RECIPE_IMAGE } from '../utils/imageFallback.js';
 
 function getYouTubeEmbedId(url) {
   if (!url) return null;
@@ -42,11 +40,21 @@ export default function RecipeDetails({
 }) {
   if (!recipe) return null;
 
-  const [imageSrc, setImageSrc] = useState(recipe.strMealThumb || FALLBACK_RECIPE_IMAGE);
-  const [imageError, setImageError] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState({});
   const [copied, setCopied] = useState(false);
   const closeBtnRef = useRef(null);
+  const imgRef = useRef(null);
+  const modalContentRef = useRef(null);
+
+  // Reset modal content scroll and smooth scroll window to top when recipe details open
+  useEffect(() => {
+    if (modalContentRef.current) {
+      modalContentRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [recipe?.idMeal]);
 
   const handlePrint = () => {
     window.print();
@@ -119,17 +127,18 @@ export default function RecipeDetails({
   }, [onClose]);
 
   useEffect(() => {
-    setImageSrc(recipe.strMealThumb || FALLBACK_RECIPE_IMAGE);
-    setImageError(false);
+    setHasError(false);
+    if (imgRef.current && imgRef.current.complete) {
+      if (imgRef.current.naturalWidth > 0) {
+        setIsLoaded(true);
+      } else {
+        setHasError(true);
+      }
+    } else {
+      setIsLoaded(false);
+    }
     setCheckedIngredients({});
   }, [recipe.idMeal, recipe.strMealThumb]);
-
-  const handleImageError = () => {
-    if (!imageError) {
-      setImageError(true);
-      setImageSrc(FALLBACK_RECIPE_IMAGE);
-    }
-  };
 
   const toggleIngredient = (idx) => {
     setCheckedIngredients((prev) => ({
@@ -211,12 +220,15 @@ export default function RecipeDetails({
         </div>
 
         {/* Scrollable Recipe Content on Screen / Full Document Flow on Print */}
-        <div className="overflow-y-auto p-5 sm:p-7 space-y-6 print:overflow-visible print:p-0 print:space-y-4 print:block">
+        <div
+          ref={modalContentRef}
+          className="overflow-y-auto p-5 sm:p-7 space-y-6 print:overflow-visible print:p-0 print:space-y-4 print:block"
+        >
           {/* Print-Only Header: Clean Branding & Date */}
           <div className="hidden print:block pb-3 mb-4 border-b-2 border-gray-800">
             <div className="flex items-center justify-between">
               <div>
-                <span className="font-serif text-xl font-bold text-black tracking-tight">
+                <span className="text-xl font-bold text-black tracking-tight">
                   CareerGhana Recipes
                 </span>
                 <p className="text-xs text-gray-600">Fresh Flavors & Authentic Culinary Showcase</p>
@@ -228,24 +240,42 @@ export default function RecipeDetails({
           </div>
 
           {/* 1. Recipe Image */}
-          <div className="w-full aspect-16/9 rounded-lg overflow-hidden bg-[#EAF4FF] border border-[#E2E8F0] print:max-h-56 print:w-auto print:aspect-auto print:border-gray-300 print:mb-3 print:mx-auto">
+          <div
+            className="relative w-full aspect-16/9 rounded-lg overflow-hidden bg-[#F1F5F9] border border-[#E2E8F0] print:max-h-56 print:w-auto print:aspect-auto print:border-gray-300 print:mb-3 print:mx-auto"
+            style={{ aspectRatio: '16 / 9' }}
+          >
+            {!isLoaded && !hasError && (
+              <div
+                className="absolute inset-0 bg-[#E2E8F0] animate-pulse"
+                aria-hidden="true"
+              />
+            )}
             <img
-              src={imageSrc}
+              ref={imgRef}
+              key={recipe.idMeal}
+              src={hasError || !recipe.strMealThumb ? NEUTRAL_RECIPE_IMAGE : recipe.strMealThumb}
               alt={title}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
               referrerPolicy="no-referrer"
-              onError={handleImageError}
-              className="w-full h-full object-cover print:object-cover print:max-h-56"
+              onLoad={() => setIsLoaded(true)}
+              onError={() => setHasError(true)}
+              className={`w-full h-full object-cover transition-opacity duration-200 print:object-cover print:max-h-56 ${
+                isLoaded || hasError ? 'opacity-100' : 'opacity-0'
+              }`}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           </div>
 
           {/* 2. Recipe Title & 3. Category / Cuisine */}
           <div>
-            <div className="text-xs font-semibold text-[#0056B3] print:text-gray-700 mb-1">
+            <div className="text-xs sm:text-[13px] font-semibold text-[#0056B3] print:text-gray-700 mb-1">
               {[category, area ? `${area} Cuisine` : null].filter(Boolean).join(' · ')}
             </div>
             <h1
               id="recipe-details-title"
-              className="font-serif text-2xl sm:text-3xl font-bold text-[#003B73] print:text-black leading-tight mb-3 print:mb-1.5"
+              className="text-2xl sm:text-3xl font-semibold text-[#003B73] print:text-black leading-tight mb-3 print:mb-1.5"
             >
               {title}
             </h1>
@@ -280,8 +310,7 @@ export default function RecipeDetails({
                   </span>
                 )}
                 {quickNutrition && (
-                  <span className="flex items-center gap-1 text-[#003B73] font-medium bg-[#F1F5F9] px-2 py-0.5 rounded-md">
-                    <Flame size={13} className="text-[#D97706]" />
+                  <span className="flex items-center text-[#003B73] font-medium bg-[#F1F5F9] px-2 py-0.5 rounded-md">
                     <span>{quickNutrition.calories} kcal / serving</span>
                   </span>
                 )}
@@ -385,7 +414,7 @@ export default function RecipeDetails({
           {/* 5. Ingredients Section */}
           <div className="print-avoid-break">
             <div className="flex items-center justify-between mb-3 print:mb-2 border-b print:border-b-2 print:border-gray-800 pb-1.5">
-              <h2 className="font-serif font-bold text-lg text-[#003B73] print:text-black">
+              <h2 className="font-semibold text-lg sm:text-xl text-[#003B73] print:text-black">
                 Ingredients
               </h2>
               <span className="text-xs text-[#6c757d] print:text-gray-700 font-medium">
@@ -445,7 +474,7 @@ export default function RecipeDetails({
 
           {/* 7. Instructions Section */}
           <div className="print-avoid-break">
-            <h2 className="font-serif font-bold text-lg text-[#003B73] print:text-black mb-3 print:mb-2 border-b print:border-b-2 print:border-gray-800 pb-1.5">
+            <h2 className="font-semibold text-lg sm:text-xl text-[#003B73] print:text-black mb-3 print:mb-2 border-b print:border-b-2 print:border-gray-800 pb-1.5">
               Instructions
             </h2>
             {instructions.length > 0 ? (
@@ -458,7 +487,7 @@ export default function RecipeDetails({
                     <span className="font-bold text-[#0056B3] print:text-black shrink-0 text-xs mt-0.5 print:text-xs">
                       {idx + 1}.
                     </span>
-                    <p className="flex-1 whitespace-pre-line text-xs sm:text-sm print:text-xs print:text-black print:leading-relaxed">
+                    <p className="flex-1 whitespace-pre-line text-xs sm:text-[14px] leading-relaxed print:text-xs print:text-black print:leading-relaxed">
                       {step}
                     </p>
                   </div>
@@ -475,7 +504,7 @@ export default function RecipeDetails({
           {recipe.strYoutube && (
             <div className="print:hidden">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-serif font-bold text-lg text-[#003B73] flex items-center gap-1.5">
+                <h2 className="font-semibold text-lg sm:text-xl text-[#003B73] flex items-center gap-1.5">
                   <Youtube size={18} className="text-[#0056B3]" />
                   <span>Video Tutorial</span>
                 </h2>

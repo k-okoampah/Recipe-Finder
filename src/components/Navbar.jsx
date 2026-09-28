@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChefHat, Heart, Menu, X, Shuffle, User, LogOut, ChevronDown, Utensils, Globe } from 'lucide-react';
+import { ChefHat, Heart, Menu, X, Shuffle, User, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { MEAL_TYPES, CUISINES } from './CategoryFilter.jsx';
 
@@ -35,7 +35,6 @@ import { MEAL_TYPES, CUISINES } from './CategoryFilter.jsx';
  * @param {Function} [props.onSignUpClick]
  * @param {'recipes'|'favorites'|'profile'} [props.currentView='recipes']
  * @param {Function} [props.onRandomClick]
- * @param {Function} [props.onAboutClick]
  * @param {Function} [props.onSelectFilter]
  * @param {Object} [props.activeFilter]
  */
@@ -48,7 +47,6 @@ export default function Navbar({
   onSignUpClick,
   currentView = 'recipes',
   onRandomClick,
-  onAboutClick,
   onSelectFilter,
   activeFilter,
 }) {
@@ -104,6 +102,7 @@ export default function Navbar({
     setIsBrowseOpen(false);
     setIsMobileMenuOpen(false);
     if (onHomeClick) onHomeClick();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectBrowseOption = (type, value) => {
@@ -125,37 +124,37 @@ export default function Navbar({
   const handleNavFavorites = () => {
     setIsMobileMenuOpen(false);
     if (onFavoritesClick) onFavoritesClick();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleNavProfile = () => {
     setIsMobileMenuOpen(false);
     if (onProfileClick) onProfileClick();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleNavLogin = () => {
     setIsMobileMenuOpen(false);
     if (onLoginClick) onLoginClick();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleNavSignUp = () => {
     setIsMobileMenuOpen(false);
     if (onSignUpClick) onSignUpClick();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSignOut = async () => {
     setIsMobileMenuOpen(false);
     await signOut();
     if (onHomeClick) onHomeClick();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRandom = () => {
     setIsMobileMenuOpen(false);
     if (onRandomClick) onRandomClick();
-  };
-
-  const handleNavAbout = () => {
-    setIsMobileMenuOpen(false);
-    if (onAboutClick) onAboutClick();
   };
 
   return (
@@ -179,7 +178,7 @@ export default function Navbar({
               <ChefHat size={19} className="text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="font-serif font-bold text-lg sm:text-xl text-[#003B73] tracking-tight leading-none group-hover:text-[#0056B3] transition-colors whitespace-nowrap">
+              <span className="font-bold text-lg sm:text-xl text-[#003B73] tracking-tight leading-none group-hover:text-[#0056B3] transition-colors whitespace-nowrap">
                 Recipe<span className="text-[#0056B3]">Finder</span>
               </span>
             </div>
@@ -198,7 +197,7 @@ export default function Navbar({
                   id="navbar-link-recipes"
                   onClick={handleNavHome}
                   aria-current={currentView === 'recipes' && !isBrowseOpen ? 'page' : undefined}
-                  className={`px-3 py-1.5 rounded-l-md text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
+                  className={`px-3 py-1.5 rounded-l-md text-[15px] font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
                     currentView === 'recipes' && !isBrowseOpen
                       ? 'bg-[#EAF4FF] text-[#003B73] font-semibold'
                       : 'text-[#212529] hover:bg-[#F5F7FA] hover:text-[#003B73]'
@@ -235,9 +234,8 @@ export default function Navbar({
                   className="absolute left-0 mt-1.5 w-[380px] bg-white rounded-xl border border-[#CBD5E1] shadow-xl z-50 p-3.5"
                 >
                   <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-[#F1F5F9]">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#003B73]">
-                      <Utensils size={13} className="text-[#0056B3]" />
-                      <span>Browse Recipes</span>
+                    <div className="text-xs font-bold text-[#003B73]">
+                      Browse Recipes
                     </div>
                     <button
                       type="button"
@@ -300,7 +298,7 @@ export default function Navbar({
                   id="navbar-link-favorites"
                   onClick={handleNavFavorites}
                   aria-current={currentView === 'favorites' ? 'page' : undefined}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
                     currentView === 'favorites'
                       ? 'bg-[#EAF4FF] text-[#003B73] font-semibold'
                       : 'text-[#212529] hover:bg-[#F5F7FA] hover:text-[#003B73]'
@@ -331,7 +329,7 @@ export default function Navbar({
                   id="navbar-link-profile"
                   onClick={handleNavProfile}
                   aria-current={currentView === 'profile' ? 'page' : undefined}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
                     currentView === 'profile'
                       ? 'bg-[#EAF4FF] text-[#003B73] font-semibold'
                       : 'text-[#212529] hover:bg-[#F5F7FA] hover:text-[#003B73]'
@@ -339,7 +337,7 @@ export default function Navbar({
                   title={user?.email || 'User Profile'}
                 >
                   <User size={14} className="text-[#0056B3]" />
-                  <span className="max-w-[120px] truncate text-xs font-medium">
+                  <span className="max-w-[120px] truncate text-[13px] font-medium">
                     {user?.email ? user.email.split('@')[0] : 'Profile'}
                   </span>
                 </button>
@@ -349,7 +347,7 @@ export default function Navbar({
                   type="button"
                   id="navbar-link-logout"
                   onClick={handleSignOut}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium text-[#6c757d] hover:text-[#003B73] hover:bg-[#F5F7FA] transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3]"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[14px] font-medium text-[#6c757d] hover:text-[#003B73] hover:bg-[#F5F7FA] transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3]"
                   title="Sign out of account"
                 >
                   <LogOut size={14} />
@@ -364,7 +362,7 @@ export default function Navbar({
                   type="button"
                   id="navbar-link-login"
                   onClick={handleNavLogin}
-                  className="px-3 py-1.5 rounded-md text-sm font-medium text-[#0056B3] hover:text-[#003B73] hover:bg-[#EAF4FF] transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3]"
+                  className="px-3.5 py-1.5 rounded-md text-[15px] font-semibold text-[#0056B3] hover:text-[#003B73] hover:bg-[#EAF4FF] transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3]"
                 >
                   <span>Log In</span>
                 </button>
@@ -374,7 +372,7 @@ export default function Navbar({
                   type="button"
                   id="navbar-link-signup"
                   onClick={handleNavSignUp}
-                  className="px-3.5 py-1.5 rounded-md text-sm font-medium bg-[#0056B3] hover:bg-[#003B73] text-white transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
+                  className="px-4 py-1.5 rounded-md text-[15px] font-semibold bg-[#0056B3] hover:bg-[#003B73] text-white transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
                 >
                   <span>Sign Up</span>
                 </button>
@@ -392,18 +390,6 @@ export default function Navbar({
               >
                 <Shuffle size={13} className="text-[#0056B3]" />
                 <span className="hidden xl:inline">Random Recipe</span>
-              </button>
-            )}
-
-            {/* About Modal Link */}
-            {onAboutClick && (
-              <button
-                type="button"
-                id="navbar-link-about"
-                onClick={handleNavAbout}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#6c757d] hover:text-[#003B73] hover:bg-[#F5F7FA] transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3]"
-              >
-                <span>About</span>
               </button>
             )}
           </nav>
@@ -474,7 +460,6 @@ export default function Navbar({
                     : 'text-[#212529] hover:bg-[#F5F7FA]'
                 }`}
               >
-                <Utensils size={17} className="text-[#0056B3]" />
                 <span>Browse Recipes</span>
               </button>
               <button
@@ -631,21 +616,6 @@ export default function Navbar({
             >
               <Shuffle size={15} aria-hidden="true" className="text-[#0056B3]" />
               <span>Random Recipe</span>
-            </button>
-          )}
-
-          {/* Mobile About */}
-          {onAboutClick && (
-            <button
-              type="button"
-              id="mobile-link-about"
-              onClick={handleNavAbout}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-[#6c757d] hover:bg-[#F5F7FA] transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3]"
-            >
-              <span className="w-4 h-4 rounded-full border border-[#6c757d] flex items-center justify-center text-[10px] font-bold text-[#6c757d]" aria-hidden="true">
-                i
-              </span>
-              <span>About RecipeFinder</span>
             </button>
           )}
         </nav>

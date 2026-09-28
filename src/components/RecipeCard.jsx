@@ -1,33 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowUpRight, Star } from 'lucide-react';
 import FavoriteButton from './FavoriteButton.jsx';
 import { useRatings } from '../hooks/useRatings.js';
-
-const FALLBACK_RECIPE_IMAGE =
-  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
+import { NEUTRAL_RECIPE_IMAGE } from '../utils/imageFallback.js';
 
 /**
  * Reusable RecipeCard Component
  * 
- * Palette:
- * - White (#FFFFFF): card surface, category pill
- * - Dark Blue (#003B73): title, cuisine labels
- * - Primary Blue (#0056B3): link, icons, hover accents
- * - Dark Text (#212529): body text
- * - Yellow (#FFC107): favorite accent
- * - Light Gray (#F5F7FA): subtle backgrounds
+ * Optimized for rapid image loading, strict aspect ratios,
+ * and zero layout shifts (CLS).
+ * 
+ * Strict Image Relationship:
+ * idMeal → strMeal → strMealThumb
+ * Always renders the official image belonging to this recipe.
+ * If missing or broken, uses a clean neutral placeholder.
  *
  * @param {Object} props
  * @param {Object} props.recipe - Normalized recipe data object
  * @param {boolean} [props.isFavorite=false]
  * @param {Function} [props.onToggleFavorite]
  * @param {Function} [props.onSelect]
+ * @param {boolean} [props.priority=false] - When true, loads eagerly with high fetchPriority (above the fold)
  */
-export default function RecipeCard({
+function RecipeCard({
   recipe,
   isFavorite = false,
   onToggleFavorite,
   onSelect,
+  priority = false,
 }) {
   if (!recipe) return null;
 
@@ -41,27 +41,29 @@ export default function RecipeCard({
     difficulty,
   } = recipe;
 
-  const displayTitle = strMeal && strMeal.trim() !== '' ? strMeal : 'Artisan Recipe';
+  const displayTitle = strMeal && strMeal.trim() !== '' ? strMeal : 'Recipe';
   const displayPrepTime = prepTime || '25-30 min';
-  const displayDifficulty = difficulty || 'Easy';
 
   const { getRecipeRating } = useRatings();
   const userRating = getRecipeRating(idMeal);
 
-  const [imageSrc, setImageSrc] = useState(strMealThumb || FALLBACK_RECIPE_IMAGE);
-  const [imageError, setImageError] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const imgRef = useRef(null);
 
+  // Check if image is already cached or needs loading when recipe changes
   useEffect(() => {
-    setImageSrc(strMealThumb || FALLBACK_RECIPE_IMAGE);
-    setImageError(false);
-  }, [strMealThumb]);
-
-  const handleImageError = () => {
-    if (!imageError) {
-      setImageError(true);
-      setImageSrc(FALLBACK_RECIPE_IMAGE);
+    setHasError(false);
+    if (imgRef.current && imgRef.current.complete) {
+      if (imgRef.current.naturalWidth > 0) {
+        setIsLoaded(true);
+      } else {
+        setHasError(true);
+      }
+    } else {
+      setIsLoaded(false);
     }
-  };
+  }, [idMeal, strMealThumb]);
 
   const handleCardClick = () => {
     if (onSelect) {
@@ -79,20 +81,34 @@ export default function RecipeCard({
       aria-labelledby={`recipe-title-${idMeal}`}
       className="group relative bg-white rounded-xl border border-[#E2E8F0] overflow-hidden hover:border-[#94A3B8] transition-colors duration-150 flex flex-col h-full select-none"
     >
-      {/* Recipe Image Container with strict 4:3 aspect ratio */}
+      {/* Recipe Image Container with fixed 4:3 aspect ratio preventing layout shifts */}
       <div
-        className="relative w-full aspect-[4/3] bg-[#F1F5F9] overflow-hidden shrink-0"
+        className="recipe-image-container relative w-full aspect-[4/3] bg-[#F1F5F9] overflow-hidden shrink-0"
         style={{ aspectRatio: '4 / 3' }}
       >
+        {/* Lightweight loading skeleton while image decodes */}
+        {!isLoaded && !hasError && (
+          <div
+            className="absolute inset-0 bg-[#E2E8F0] animate-pulse"
+            aria-hidden="true"
+          />
+        )}
+
         <img
-          src={imageSrc}
+          ref={imgRef}
+          key={idMeal}
+          src={hasError || !strMealThumb ? NEUTRAL_RECIPE_IMAGE : strMealThumb}
           alt={displayTitle}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'low'}
           decoding="async"
           referrerPolicy="no-referrer"
-          onError={handleImageError}
-          className="w-full h-full object-cover block"
-          style={{ objectFit: 'cover' }}
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setHasError(true)}
+          className={`w-full h-full object-cover block transition-opacity duration-200 ${
+            isLoaded || hasError ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
 
         {/* Favorite Button */}
@@ -111,17 +127,17 @@ export default function RecipeCard({
       </div>
 
       {/* Culinary Details Content */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
         <div>
           {/* Category & Cuisine metadata */}
-          <div className="text-xs font-medium text-[#64748B] mb-1.5 truncate">
+          <div className="text-[13px] font-medium text-[#64748B] mb-1.5 truncate">
             {originCategoryText || 'Recipe'}
           </div>
 
-          {/* Clean, simplified Recipe Name */}
+          {/* Clean Recipe Name */}
           <h3
             id={`recipe-title-${idMeal}`}
-            className="font-sans font-semibold text-base text-[#1E293B] group-hover:text-[#0056B3] transition-colors leading-snug line-clamp-2 break-words"
+            className="font-semibold text-[18px] sm:text-[19px] text-[#1E293B] group-hover:text-[#0056B3] transition-colors leading-snug line-clamp-2 break-words"
           >
             <button
               type="button"
@@ -133,9 +149,9 @@ export default function RecipeCard({
           </h3>
         </div>
 
-        {/* Short Metadata & Action */}
-        <div className="mt-3 pt-3 border-t border-[#F1F5F9] flex items-center justify-between text-xs text-[#64748B]">
-          <div className="flex items-center gap-1.5">
+        {/* Metadata & Action */}
+        <div className="mt-3.5 pt-3 border-t border-[#F1F5F9] flex items-center justify-between text-[13px] text-[#64748B]">
+          <div className="flex items-center gap-1.5 font-medium">
             <span>{displayPrepTime}</span>
             {userRating > 0 && (
               <>
@@ -147,7 +163,7 @@ export default function RecipeCard({
               </>
             )}
           </div>
-          <span className="text-[#0056B3] font-medium flex items-center gap-0.5" aria-hidden="true">
+          <span className="text-[#0056B3] font-semibold flex items-center gap-0.5" aria-hidden="true">
             <span>View</span>
             <ArrowUpRight size={13} />
           </span>
@@ -156,3 +172,5 @@ export default function RecipeCard({
     </article>
   );
 }
+
+export default React.memo(RecipeCard);

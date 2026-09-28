@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, Plus, Minus, RotateCcw } from 'lucide-react';
+import { Plus, Minus, RotateCcw } from 'lucide-react';
 import { calculateRecipeNutrition } from '../utils/nutrition.js';
 
 /**
@@ -43,13 +43,10 @@ export default function NutritionalInfo({ recipe }) {
       {/* Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 print:mb-2">
         <div>
-          <div className="flex items-center gap-2">
-            <Activity size={18} className="text-[#0056B3] print:hidden" aria-hidden="true" />
-            <h2 className="font-serif font-bold text-lg text-[#003B73] print:text-black">
-              Nutritional Information
-            </h2>
-          </div>
-          <p className="text-xs text-[#64748B] print:text-gray-600 mt-0.5">
+          <h2 className="font-semibold text-lg sm:text-xl text-[#003B73] print:text-black">
+            Nutritional Information
+          </h2>
+          <p className="text-xs sm:text-[13px] text-[#64748B] font-normal print:text-gray-600 mt-0.5">
             Estimated per-serving values based on a standard 2,000 calorie daily diet
           </p>
         </div>

@@ -7,13 +7,10 @@
  */
 
 import { GHANAIAN_RECIPES } from '../data/ghanaianRecipes.js';
+import { NEUTRAL_RECIPE_IMAGE } from '../utils/imageFallback.js';
 
 const BASE_URL = 'https://www.themealdb.com/api/json/v1/1';
 const REQUEST_TIMEOUT_MS = 10000;
-
-// High-quality culinary fallback image if thumbnail is missing or broken
-const FALLBACK_RECIPE_IMAGE =
-  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80';
 
 // Pre-normalize Ghanaian recipes for fast in-memory access and search
 const NORMALIZED_GHANAIAN_RECIPES = GHANAIAN_RECIPES.map((recipe) => normalizeMeal(recipe)).filter(Boolean);
@@ -33,28 +30,20 @@ function matchesGhanaianQuery(recipe, query) {
     return true;
   }
 
-  // Name match
+  // Exact or substring meal name match
   if (recipe.strMeal && recipe.strMeal.toLowerCase().includes(q)) {
     return true;
   }
 
-  // Category or Area match
-  if (recipe.strCategory && recipe.strCategory.toLowerCase().includes(q)) {
+  // Exact category or area match
+  if (recipe.strCategory && recipe.strCategory.toLowerCase() === q) {
     return true;
   }
-  if (recipe.strArea && recipe.strArea.toLowerCase().includes(q)) {
-    return true;
-  }
-
-  // Description or instructions match
-  if (recipe.description && recipe.description.toLowerCase().includes(q)) {
-    return true;
-  }
-  if (recipe.strInstructions && recipe.strInstructions.toLowerCase().includes(q)) {
+  if (recipe.strArea && recipe.strArea.toLowerCase() === q) {
     return true;
   }
 
-  // Ingredients match
+  // Explicit ingredient match
   if (Array.isArray(recipe.ingredients)) {
     return recipe.ingredients.some(
       (item) => item.ingredient && item.ingredient.toLowerCase().includes(q)
@@ -168,15 +157,16 @@ export function normalizeMeal(rawMeal, defaults = {}) {
   const ingredients = extractIngredients(rawMeal);
   const rawCategory = rawMeal.strCategory?.trim();
   const rawArea = rawMeal.strArea?.trim();
+  const rawThumb =
+    rawMeal.strMealThumb && typeof rawMeal.strMealThumb === 'string'
+      ? rawMeal.strMealThumb.trim()
+      : '';
 
   return {
     ...rawMeal,
     idMeal: String(rawMeal.idMeal || defaults.idMeal || ''),
     strMeal: (rawMeal.strMeal || defaults.strMeal || 'Untitled Recipe').trim(),
-    strMealThumb:
-      rawMeal.strMealThumb && typeof rawMeal.strMealThumb === 'string' && rawMeal.strMealThumb.trim() !== ''
-        ? rawMeal.strMealThumb.trim()
-        : FALLBACK_RECIPE_IMAGE,
+    strMealThumb: rawThumb || NEUTRAL_RECIPE_IMAGE,
     strCategory: rawCategory && rawCategory.toLowerCase() !== 'null' ? rawCategory : defaults.category || 'General',
     strArea: rawArea && rawArea.toLowerCase() !== 'null' ? rawArea : defaults.area || 'International',
     strInstructions: typeof rawMeal.strInstructions === 'string' ? rawMeal.strInstructions.trim() : '',

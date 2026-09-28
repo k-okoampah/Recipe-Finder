@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Utensils, Globe, Check, X, Filter } from 'lucide-react';
+import { ChevronDown, Check, X } from 'lucide-react';
 
 export const MEAL_TYPES = [
   { id: 'all-meals', name: 'All Dishes', value: 'All' },
@@ -148,15 +148,10 @@ export default function CategoryFilter({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Title & Description */}
           <div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#EAF4FF] text-[#0056B3] flex items-center justify-center shrink-0">
-                <Filter size={16} />
-              </div>
-              <h2 className="text-base sm:text-lg font-bold text-[#0F172A]">
-                Browse Recipes
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+            <h2 className="text-lg sm:text-xl font-semibold text-[#0F172A]">
+              Browse Recipes
+            </h2>
+            <p className="text-xs sm:text-[14px] text-[#64748B] mt-1 font-normal">
               Filter dishes by meal type or world cuisine using the dropdown below
             </p>
           </div>
@@ -180,11 +175,6 @@ export default function CategoryFilter({
                 } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  {currentFilter.type === 'cuisine' ? (
-                    <Globe size={15} className="text-[#0056B3] shrink-0" />
-                  ) : (
-                    <Utensils size={15} className="text-[#0056B3] shrink-0" />
-                  )}
                   <span className="text-[#64748B] text-xs font-normal">Browse:</span>
                   <span className="font-semibold text-[#0F172A] truncate">
                     {getSelectedLabel()}
@@ -269,8 +259,7 @@ export default function CategoryFilter({
                           : 'text-[#334155] hover:bg-[#F1F5F9]'
                       }`}
                     >
-                      <span className="flex items-center gap-2">
-                        <Utensils size={14} className="text-[#0056B3]" />
+                      <span>
                         All Recipes (Show All)
                       </span>
                       {!isFiltering && <Check size={14} className="text-[#0056B3]" />}
@@ -298,12 +287,7 @@ export default function CategoryFilter({
                               : 'text-[#334155] hover:bg-[#F1F5F9]'
                           }`}
                         >
-                          <span className="flex items-center gap-2">
-                            {dropdownTab === 'cuisine' ? (
-                              <Globe size={13} className="text-[#64748B]" />
-                            ) : (
-                              <Utensils size={13} className="text-[#64748B]" />
-                            )}
+                          <span className="truncate">
                             {item.name}
                           </span>
                           {isSelected && <Check size={14} className="text-[#0056B3]" />}
@@ -336,14 +320,14 @@ export default function CategoryFilter({
                 className="w-full sm:w-auto h-10 pl-3.5 pr-8 bg-white border border-[#CBD5E1] hover:border-[#0056B3] rounded-lg text-xs sm:text-sm font-medium text-[#0F172A] cursor-pointer appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#0056B3] focus:border-transparent shadow-xs transition-colors"
               >
                 <option value="all">All Recipes (Browse All)</option>
-                <optgroup label="── Meal Types ──">
+                <optgroup label="Meal Types">
                   {MEAL_TYPES.filter((m) => m.value !== 'All').map((meal) => (
                     <option key={`opt-meal-${meal.id}`} value={`mealType:${meal.value}`}>
                       {meal.name}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="── Cuisines ──">
+                <optgroup label="Cuisines">
                   {CUISINES.filter((c) => c.value !== 'All').map((cuisine) => (
                     <option key={`opt-cuis-${cuisine.id}`} value={`cuisine:${cuisine.value}`}>
                       {cuisine.name} Cuisine

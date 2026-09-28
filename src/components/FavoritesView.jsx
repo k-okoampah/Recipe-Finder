@@ -56,11 +56,11 @@ export default function FavoritesView({
             <Lock size={22} className="text-[#0056B3]" />
           </div>
 
-          <h2 className="font-serif text-xl font-bold text-[#003B73] mb-2">
+          <h2 className="text-xl font-semibold text-[#003B73] mb-2">
             Protected Favorites
           </h2>
 
-          <p className="text-xs sm:text-sm text-[#6c757d] leading-relaxed mb-6">
+          <p className="text-xs sm:text-[14px] text-[#6c757d] leading-relaxed mb-6 font-normal">
             Log in or create an account to view and manage your saved recipes across sessions.
           </p>
 
@@ -69,7 +69,7 @@ export default function FavoritesView({
               type="button"
               id="favorites-guest-login-btn"
               onClick={onOpenLogin}
-              className="w-full sm:w-auto px-4 py-2 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-medium text-xs sm:text-sm transition-colors cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
             >
               Log In
             </button>
@@ -78,7 +78,7 @@ export default function FavoritesView({
               type="button"
               id="favorites-guest-signup-btn"
               onClick={onOpenSignUp}
-              className="w-full sm:w-auto px-4 py-2 rounded-md bg-white border border-[#E2E8F0] text-[#0056B3] hover:bg-[#EAF4FF] font-medium text-xs sm:text-sm transition-colors cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 rounded-md bg-white border border-[#E2E8F0] text-[#0056B3] hover:bg-[#EAF4FF] font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
             >
               Create Account
             </button>
@@ -97,13 +97,13 @@ export default function FavoritesView({
             type="button"
             id="favorites-back-to-browse-btn"
             onClick={onDiscover}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#6c757d] hover:text-[#0056B3] transition-colors mb-2 cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium text-[#6c757d] hover:text-[#0056B3] transition-colors mb-2 cursor-pointer"
           >
             <ArrowLeft size={14} aria-hidden="true" />
             <span>Back to Browse</span>
           </button>
 
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#003B73] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#003B73] tracking-tight">
             Favorite Recipes
           </h1>
           <p className="text-xs sm:text-sm text-[#6c757d] mt-1">
@@ -141,10 +141,11 @@ export default function FavoritesView({
         <section id="favorites-grid-section" aria-label="Your saved favorite recipes">
           <h2 className="sr-only">Saved Recipes Collection</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-7">
-            {favorites.map((recipe) => (
+            {favorites.map((recipe, index) => (
               <RecipeCard
                 key={recipe.idMeal}
                 recipe={recipe}
+                priority={index < 4}
                 isFavorite={true}
                 onToggleFavorite={onToggleFavorite}
                 onSelect={onSelectRecipe}

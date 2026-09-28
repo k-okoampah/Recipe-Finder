@@ -157,11 +157,11 @@ export default function RecipeGrid({
       {title && (
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6 pb-3 border-b border-[#E2E8F0]">
           <div>
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#003B73] tracking-tight">
+            <h2 className="text-2xl sm:text-[28px] lg:text-[32px] font-semibold text-[#003B73] tracking-tight leading-snug">
               {title}
             </h2>
           </div>
-          <span className="text-xs sm:text-sm text-[#6c757d] font-medium">
+          <span className="text-xs sm:text-[14px] text-[#6c757d] font-medium">
             Showing <strong className="text-[#212529] font-semibold">{recipes.length}</strong>{' '}
             {recipes.length === 1 ? 'recipe' : 'recipes'}
           </span>
@@ -178,11 +178,12 @@ export default function RecipeGrid({
         id="recipes-grid-list"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-7"
       >
-        {recipes.map((recipe) => (
+        {recipes.map((recipe, index) => (
           <RecipeCard
-            key={recipe.idMeal || recipe.id || recipe.title || Math.random()}
+            key={recipe.idMeal}
             recipe={recipe}
-            isFavorite={favoriteIds.has(recipe.idMeal)}
+            priority={index < 4}
+            isFavorite={favoriteIds.has(String(recipe.idMeal))}
             onToggleFavorite={onToggleFavorite}
             onSelect={handleSelect}
           />

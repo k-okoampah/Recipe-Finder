@@ -100,12 +100,12 @@ export default function EmptyState({
       </div>
 
       {/* Title */}
-      <h3 className="font-serif text-lg sm:text-xl font-bold text-[#003B73] mb-2 leading-snug break-words">
+      <h3 className="text-lg sm:text-xl font-semibold text-[#003B73] mb-2 leading-snug break-words">
         {displayTitle}
       </h3>
 
       {/* Description */}
-      <p className="font-sans text-xs sm:text-sm text-[#6c757d] leading-relaxed mb-5 max-w-sm mx-auto">
+      <p className="text-xs sm:text-[14px] text-[#6c757d] leading-relaxed mb-5 max-w-sm mx-auto font-normal">
         {displayDescription}
       </p>
 

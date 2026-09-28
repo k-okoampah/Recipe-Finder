@@ -25,7 +25,7 @@ export default function LoadingState({
         <div className="w-12 h-12 rounded-xl bg-[#EAF4FF] border border-[#d0e5ff] flex items-center justify-center text-[#0056B3] mb-4">
           <Loader2 size={24} className="animate-spin text-[#0056B3]" />
         </div>
-        <p className="font-serif text-base sm:text-lg font-bold text-[#003B73]">
+        <p className="text-base sm:text-lg font-semibold text-[#003B73]">
           {message}
         </p>
         <p className="text-xs text-[#6c757d] mt-1">

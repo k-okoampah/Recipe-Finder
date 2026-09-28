@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Navbar from './components/Navbar.jsx';
 import Hero from './components/Hero.jsx';
 import CategoryFilter from './components/CategoryFilter.jsx';
@@ -8,7 +8,6 @@ import FavoritesView from './components/FavoritesView.jsx';
 import ProfileView from './components/ProfileView.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import Footer from './components/Footer.jsx';
-import AboutModal from './components/AboutModal.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import { useFavorites } from './hooks/useFavorites.js';
@@ -52,8 +51,6 @@ export default function App() {
     toggleFavorite,
   } = useFavorites();
 
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
-
   // Intercept favorite toggle when guest is logged out
   const handleToggleFavorite = useCallback((recipe) => {
     if (!isAuthenticated) {
@@ -63,10 +60,47 @@ export default function App() {
     toggleFavorite(recipe);
   }, [isAuthenticated, toggleFavorite]);
 
-  // Auto-scroll to top when navigating between pages/views (Requirement 3)
+  // 1. On full page refresh & mount: ensure browser never restores previous scroll position
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentView]);
+    if (typeof window !== 'undefined') {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+      }
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'instant',
+      });
+
+      const handlePageShow = (event) => {
+        // Prevent bfcache or mobile reload from restoring scroll
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      };
+
+      window.addEventListener('pageshow', handlePageShow);
+      return () => window.removeEventListener('pageshow', handlePageShow);
+    }
+  }, []);
+
+  // 2. Smoothly scroll to top whenever navigating between routes/pages/views
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth',
+    });
+  }, [
+    currentView,
+    selectedRecipe?.idMeal,
+    authModalState.isOpen,
+    authModalState.mode,
+  ]);
 
   // Load initial discovery recipes from TheMealDB and handle shared recipe deep links
   useEffect(() => {
@@ -134,10 +168,12 @@ export default function App() {
     setSelectedCategory('All');
     setErrorMessage(null);
     setLoading(true);
+    // Clear old recipe data immediately so previous images are not retained
+    setRecipes([]);
 
     try {
       const results = await searchMealsByName(trimmed);
-      setRecipes(results);
+      setRecipes(results || []);
     } catch (err) {
       console.warn('Search request encountered an error:', err);
       setErrorMessage('Something went wrong while loading recipes. Please try again.');
@@ -155,11 +191,13 @@ export default function App() {
     setSearchQuery('');
     setErrorMessage(null);
     setLoading(true);
+    // Replace previous recipe results completely when switching categories/cuisines
+    setRecipes([]);
 
     try {
       if (value === 'All') {
         const defaultMeals = await searchMealsByName('');
-        setRecipes(defaultMeals.length > 0 ? defaultMeals : MOCK_RECIPES);
+        setRecipes(defaultMeals && defaultMeals.length > 0 ? defaultMeals : MOCK_RECIPES);
       } else if (type === 'cuisine') {
         const cuisineMeals = await getMealsByArea(value);
         setRecipes(cuisineMeals || []);
@@ -185,7 +223,7 @@ export default function App() {
   const handleSelectRecipe = useCallback(async (recipe) => {
     if (!recipe) return;
 
-    // Show initial preview immediately
+    // Show initial preview immediately with its verified recipe object
     setSelectedRecipe(recipe);
 
     // If recipe lacks full instructions or ingredients, fetch by ID
@@ -194,7 +232,7 @@ export default function App() {
         const fullDetails = await getMealDetailsById(recipe.idMeal);
         if (fullDetails) {
           setSelectedRecipe((current) =>
-            current && current.idMeal === recipe.idMeal ? fullDetails : current
+            current && String(current.idMeal) === String(recipe.idMeal) ? fullDetails : current
           );
         }
       } catch (err) {
@@ -232,10 +270,11 @@ export default function App() {
     setCurrentView('recipes');
     setErrorMessage(null);
     setLoading(true);
+    setRecipes([]);
 
     try {
       const defaultMeals = await searchMealsByName('');
-      setRecipes(defaultMeals.length > 0 ? defaultMeals : MOCK_RECIPES);
+      setRecipes(defaultMeals && defaultMeals.length > 0 ? defaultMeals : MOCK_RECIPES);
     } catch {
       setRecipes(MOCK_RECIPES);
     } finally {
@@ -265,7 +304,7 @@ export default function App() {
   return (
     <div
       id="recipe-finder-app"
-      className="min-h-screen flex flex-col font-sans bg-[#F5F7FA] text-[#212529] antialiased w-full max-w-full overflow-x-clip print:bg-white print:overflow-visible"
+      className="min-h-screen flex flex-col font-primary bg-[#F5F7FA] text-[#212529] antialiased w-full max-w-full overflow-x-clip print:bg-white print:overflow-visible"
     >
       {/* Skip to Main Content Link for Keyboard Accessibility */}
       <a
@@ -285,15 +324,25 @@ export default function App() {
           onHomeClick={() => {
             setCurrentView('recipes');
             handleReset();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           onFavoritesClick={() => {
             setCurrentView((prev) => (prev === 'favorites' ? 'recipes' : 'favorites'));
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          onProfileClick={() => setCurrentView('profile')}
-          onLoginClick={() => setAuthModalState({ isOpen: true, mode: 'login' })}
-          onSignUpClick={() => setAuthModalState({ isOpen: true, mode: 'signup' })}
+          onProfileClick={() => {
+            setCurrentView('profile');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onLoginClick={() => {
+            setAuthModalState({ isOpen: true, mode: 'login' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onSignUpClick={() => {
+            setAuthModalState({ isOpen: true, mode: 'signup' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
           onRandomClick={handleRandomMeal}
-          onAboutClick={() => setIsAboutOpen(true)}
         />
       </div>
 
@@ -389,14 +438,7 @@ export default function App() {
             setCurrentView('favorites');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          onOpenAbout={() => setIsAboutOpen(true)}
           favoriteCount={favoriteCount}
-        />
-
-        {/* About Dialog Modal */}
-        <AboutModal
-          isOpen={isAboutOpen}
-          onClose={() => setIsAboutOpen(false)}
         />
 
         {/* Floating Scroll to Top Arrow Button */}

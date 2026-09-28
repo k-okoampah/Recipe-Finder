@@ -46,6 +46,7 @@ export default function AuthModal({
   // Sync mode when initialMode changes or modal opens
   useEffect(() => {
     if (isOpen) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       setMode(initialMode);
       setErrorMessage(null);
       setSuccessMessage(null);
@@ -58,6 +59,13 @@ export default function AuthModal({
       }, 50);
     }
   }, [isOpen, initialMode]);
+
+  // Smooth scroll window to top when switching modes inside AuthModal
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [isOpen, mode]);
 
   // Handle ESC key
   useEffect(() => {
@@ -158,11 +166,11 @@ export default function AuthModal({
         {/* Favorite Guest Prompt Mode */}
         {mode === 'prompt' ? (
           <div className="text-center py-2">
-            <h2 id="auth-modal-title" className="font-serif text-xl font-bold text-[#003B73] mb-2 leading-tight">
+            <h2 id="auth-modal-title" className="text-xl sm:text-2xl font-semibold text-[#003B73] mb-2 leading-tight">
               Save Your Favorite Recipes
             </h2>
 
-            <p className="text-xs sm:text-sm text-[#6c757d] leading-relaxed mb-6">
+            <p className="text-xs sm:text-[14px] text-[#6c757d] leading-relaxed mb-6 font-normal">
               Log in to save recipes to your collection and access them anytime.
             </p>
 
@@ -174,7 +182,7 @@ export default function AuthModal({
                   setMode('login');
                   setErrorMessage(null);
                 }}
-                className="w-full py-2.5 px-4 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-medium text-sm transition-colors cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-semibold text-sm transition-colors cursor-pointer"
               >
                 Log In
               </button>
@@ -186,7 +194,7 @@ export default function AuthModal({
                   setMode('signup');
                   setErrorMessage(null);
                 }}
-                className="w-full py-2.5 px-4 rounded-md bg-white border border-[#E2E8F0] text-[#0056B3] hover:bg-[#EAF4FF] font-medium text-sm transition-colors cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-md bg-white border border-[#E2E8F0] text-[#0056B3] hover:bg-[#EAF4FF] font-semibold text-sm transition-colors cursor-pointer"
               >
                 Create Account
               </button>
@@ -196,14 +204,14 @@ export default function AuthModal({
           /* Standard Auth Form (Login / Signup / Forgot Password) */
           <div>
             <div className="mb-5 pr-6">
-              <h2 id="auth-modal-title" className="font-serif text-xl font-bold text-[#003B73] leading-tight">
+              <h2 id="auth-modal-title" className="text-xl sm:text-2xl font-semibold text-[#003B73] leading-tight">
                 {mode === 'login'
                   ? 'Log In'
                   : mode === 'signup'
                   ? 'Create Account'
                   : 'Reset Password'}
               </h2>
-              <p className="text-xs text-[#6c757d] mt-1">
+              <p className="text-xs sm:text-[13px] text-[#6c757d] mt-1 font-normal">
                 {mode === 'login'
                   ? 'Sign in to access your saved recipes.'
                   : mode === 'signup'

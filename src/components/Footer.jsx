@@ -15,13 +15,11 @@ import { ChefHat, ExternalLink } from 'lucide-react';
  * @param {Object} props
  * @param {Function} props.onNavigateRecipes
  * @param {Function} props.onNavigateFavorites
- * @param {Function} props.onOpenAbout
  * @param {number} [props.favoriteCount=0]
  */
 export default function Footer({
   onNavigateRecipes,
   onNavigateFavorites,
-  onOpenAbout,
   favoriteCount = 0,
 }) {
   return (
@@ -33,23 +31,23 @@ export default function Footer({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 sm:gap-10 items-start">
           {/* Brand Column */}
-          <div className="md:col-span-5 space-y-3">
+          <div className="md:col-span-4 space-y-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-[#0056B3] flex items-center justify-center text-white shadow-xs" aria-hidden="true">
                 <ChefHat size={18} className="text-white" />
               </div>
-              <span className="font-serif font-bold text-lg sm:text-xl text-[#003B73] tracking-tight">
+              <span className="font-bold text-lg sm:text-xl text-[#003B73] tracking-tight">
                 Recipe<span className="text-[#0056B3]">Finder</span>
               </span>
             </div>
 
-            <p className="text-xs sm:text-sm text-[#6c757d] leading-relaxed max-w-sm">
+            <p className="text-xs sm:text-[14px] text-[#6c757d] leading-relaxed max-w-sm font-normal">
               Discover delicious recipes, explore authentic international cuisines, and save your favorites with cloud synchronization.
             </p>
           </div>
 
           {/* Navigation Links Column */}
-          <div className="md:col-span-3 space-y-3">
+          <div className="md:col-span-2 space-y-3">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#003B73]">
               Navigation
             </h2>
@@ -80,22 +78,36 @@ export default function Footer({
                     )}
                   </button>
                 </li>
+              </ul>
+            </nav>
+          </div>
+
+          {/* Connect with me / My Links Column */}
+          <div className="md:col-span-3 space-y-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#003B73]">
+              Connect with me
+            </h2>
+            <nav aria-label="Social and personal links">
+              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                 <li>
-                  <button
-                    type="button"
-                    id="footer-nav-about"
-                    onClick={onOpenAbout}
-                    className="text-[#6c757d] hover:text-[#0056B3] font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-md py-1"
+                  <a
+                    href="https://linktr.ee/k_okoampah"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    id="footer-linktree-link"
+                    aria-label="My Linktree (opens in a new tab)"
+                    className="text-[#6c757d] hover:text-[#0056B3] font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-md py-1 inline-flex items-center gap-1.5"
                   >
-                    About
-                  </button>
+                    <span>My Linktree</span>
+                    <ExternalLink size={13} aria-hidden="true" className="inline text-[#0056B3]" />
+                  </a>
                 </li>
               </ul>
             </nav>
           </div>
 
           {/* Attribution Column */}
-          <div className="md:col-span-4 space-y-3">
+          <div className="md:col-span-3 space-y-3">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#003B73]">
               Data Attribution
             </h2>
@@ -120,8 +132,22 @@ export default function Footer({
         {/* Bottom Sub-bar */}
         <div className="border-t border-[#E2E8F0] mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#6c757d] text-center sm:text-left">
           <p>© {new Date().getFullYear()} Recipe Finder. All rights reserved.</p>
-          <div className="flex items-center gap-3">
-            <span>Powered by Supabase Auth & Cloud Database</span>
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 gap-y-1">
+            <span>
+              Built by{' '}
+              <a
+                href="https://linktr.ee/k_okoampah"
+                target="_blank"
+                rel="noopener noreferrer"
+                id="footer-developer-credit"
+                aria-label="Built by Kofi Okoampah (opens in a new tab)"
+                className="font-semibold text-[#0056B3] hover:text-[#003B73] underline hover:no-underline transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] rounded-xs"
+              >
+                Kofi Okoampah
+              </a>
+            </span>
+            <span className="hidden sm:inline text-[#CBD5E1]" aria-hidden="true">·</span>
+            <span>Powered by Supabase Auth &amp; Cloud Database</span>
           </div>
         </div>
       </div>

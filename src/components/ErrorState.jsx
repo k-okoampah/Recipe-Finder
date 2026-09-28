@@ -68,12 +68,12 @@ export default function ErrorState({
       </div>
 
       {/* Friendly Title in Dark Blue #003B73 */}
-      <h3 className="font-serif text-lg sm:text-xl font-bold text-[#003B73] mb-2 leading-snug break-words">
+      <h3 className="text-lg sm:text-xl font-semibold text-[#003B73] mb-2 leading-snug break-words">
         {title}
       </h3>
 
       {/* Sanitized Friendly Description */}
-      <p className="font-sans text-xs sm:text-sm text-[#6c757d] leading-relaxed mb-6 max-w-md mx-auto">
+      <p className="text-xs sm:text-[14px] text-[#6c757d] leading-relaxed mb-6 max-w-md mx-auto font-normal">
         {friendlyDescription}
       </p>
 

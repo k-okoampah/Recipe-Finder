@@ -1,5 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Search, X, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, X, ArrowRight, Loader2, AlertCircle, Shuffle, RotateCcw } from 'lucide-react';
+import { MOCK_RECIPES } from '../data/mockRecipes.js';
+import { NEUTRAL_RECIPE_IMAGE } from '../utils/imageFallback.js';
+
+/**
+ * Calculates a stable daily index based on current calendar date (local day)
+ * so the featured dish deterministically changes every 24 hours.
+ */
+function getDailyFeaturedIndex(totalItems) {
+  if (!totalItems || totalItems <= 0) return 0;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const date = now.getDate();
+  const epochDays = Math.floor(
+    (Date.UTC(year, month, date) - Date.UTC(2025, 0, 1)) / (1000 * 60 * 60 * 24)
+  );
+  return ((epochDays % totalItems) + totalItems) % totalItems;
+}
 
 /**
  * Hero Component
@@ -55,8 +73,6 @@ export default function Hero({
     }
   }, [searchQuery]);
 
-  const popularSearches = ['Ghanaian', 'Jollof', 'Chicken', 'Seafood', 'Pasta'];
-
   const handleSubmit = (e) => {
     e.preventDefault();
     const trimmed = query.trim();
@@ -80,14 +96,6 @@ export default function Hero({
     }
   };
 
-  const handlePopularClick = (term) => {
-    setQuery(term);
-    setEmptyWarning(false);
-    if (onSearch) {
-      onSearch(term);
-    }
-  };
-
   const handleClear = () => {
     setQuery('');
     setEmptyWarning(false);
@@ -96,15 +104,53 @@ export default function Hero({
     }
   };
 
-  const featuredMeal = {
-    idMeal: 'gh-01',
-    strMeal: 'Ghana Jollof Rice with Spiced Chicken',
-    strMealThumb: '/images/ghana/jollof.jpg',
-    strCategory: 'Ghanaian',
-    strArea: 'Ghanaian',
-    prepTime: '45 min',
-    difficulty: 'Moderate',
-    description: 'Jasmine rice simmered in a spiced tomato, onion, and scotch bonnet sauce, paired with seasoned grilled chicken.',
+  // Pool of rich featured recipes that rotate daily or can be shuffled on-demand
+  const featuredPool = MOCK_RECIPES && MOCK_RECIPES.length > 0 ? MOCK_RECIPES : [];
+  const dailyIndex = getDailyFeaturedIndex(featuredPool.length);
+  const [currentIndex, setCurrentIndex] = useState(dailyIndex);
+  const [isShuffled, setIsShuffled] = useState(false);
+
+  // Sync index if not manually shuffled in current session
+  useEffect(() => {
+    if (!isShuffled) {
+      setCurrentIndex(dailyIndex);
+    }
+  }, [dailyIndex, isShuffled]);
+
+  const featuredMeal = featuredPool[currentIndex] || featuredPool[0];
+
+  const [featuredLoaded, setFeaturedLoaded] = useState(false);
+  const featuredImgRef = useRef(null);
+
+  useEffect(() => {
+    if (featuredImgRef.current && featuredImgRef.current.complete) {
+      setFeaturedLoaded(true);
+    } else {
+      setFeaturedLoaded(false);
+    }
+  }, [featuredMeal?.idMeal, featuredMeal?.strMealThumb]);
+
+  // Shuffle handler to pick another dish from the pool
+  const handleShuffle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsShuffled(true);
+    setCurrentIndex((prev) => {
+      if (featuredPool.length <= 1) return prev;
+      let next;
+      do {
+        next = Math.floor(Math.random() * featuredPool.length);
+      } while (next === prev);
+      return next;
+    });
+  };
+
+  // Reset back to today's daily dish
+  const handleResetToDaily = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsShuffled(false);
+    setCurrentIndex(dailyIndex);
   };
 
   return (
@@ -116,7 +162,7 @@ export default function Hero({
         {/* Left Column: Search & Core Action */}
         <div className="lg:col-span-7 flex flex-col text-left">
           {/* Natural Page Headline */}
-          <h1 className="font-sans text-2xl sm:text-3xl lg:text-[2.25rem] font-bold text-[#0F172A] tracking-tight leading-tight mb-2">
+          <h1 className="text-3xl sm:text-4xl lg:text-[44px] xl:text-[48px] font-bold text-[#0F172A] tracking-tight leading-[1.18] mb-3">
             Find a recipe.{' '}
             <span className="text-[#0056B3] block sm:inline">
               Make something delicious.
@@ -124,7 +170,7 @@ export default function Hero({
           </h1>
 
           {/* Practical subtext */}
-          <p className="text-sm sm:text-base text-[#64748B] max-w-xl mb-5 leading-relaxed">
+          <p className="text-[15px] sm:text-base text-[#64748B] font-normal max-w-xl mb-6 leading-relaxed">
             Search ingredients, explore regional recipes, or discover something new to cook tonight.
           </p>
 
@@ -148,7 +194,7 @@ export default function Hero({
                     placeholder="Search chicken, jollof, curry, pasta..."
                     aria-invalid={emptyWarning}
                     disabled={isLoading}
-                    className={`w-full pl-9 pr-9 py-2.5 bg-white rounded-md border text-sm text-[#0F172A] placeholder:text-[#94A3B8] transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#0056B3] focus:border-[#0056B3] ${
+                    className={`w-full pl-9 pr-9 py-2.5 bg-white rounded-md border text-sm sm:text-[15px] text-[#0F172A] placeholder:text-[#94A3B8] transition-colors focus:outline-hidden focus:ring-1 focus:ring-[#0056B3] focus:border-[#0056B3] ${
                       emptyWarning
                         ? 'border-[#0056B3]'
                         : 'border-[#E2E8F0] hover:border-[#CBD5E1]'
@@ -172,7 +218,7 @@ export default function Hero({
                   type="submit"
                   id="hero-submit-search-btn"
                   disabled={isLoading}
-                  className="px-5 py-2.5 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-medium text-sm transition-colors cursor-pointer inline-flex items-center justify-center shrink-0 disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
+                  className="px-5 py-2.5 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-semibold text-sm sm:text-[15px] transition-colors cursor-pointer inline-flex items-center justify-center shrink-0 disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
                 >
                   {isLoading ? (
                     <>
@@ -190,39 +236,13 @@ export default function Hero({
                   id="hero-empty-search-alert"
                   role="alert"
                   aria-live="polite"
-                  className="flex items-center gap-1.5 text-xs text-[#0056B3] mt-2 font-medium px-1"
+                  className="flex items-center gap-1.5 text-xs sm:text-[13px] text-[#0056B3] mt-2 font-medium px-1"
                 >
                   <AlertCircle size={14} aria-hidden="true" className="shrink-0" />
                   <span>Please enter a recipe name or ingredient (e.g. Chicken, Pasta, Curry) to search.</span>
                 </div>
               )}
             </form>
-          </div>
-
-          {/* Simple, Interactive Popular Searches */}
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs text-[#64748B]">
-            <span className="font-semibold text-[#003B73]">Popular:</span>
-            {popularSearches.map((term, index) => {
-              const isActive = query.toLowerCase() === term.toLowerCase();
-              return (
-                <React.Fragment key={term}>
-                  <button
-                    type="button"
-                    id={`popular-search-${term.toLowerCase()}`}
-                    onClick={() => handlePopularClick(term)}
-                    disabled={isLoading}
-                    className={`font-medium transition-colors cursor-pointer hover:text-[#0056B3] hover:underline underline-offset-2 ${
-                      isActive ? 'text-[#0056B3] font-bold underline' : 'text-[#334155]'
-                    }`}
-                  >
-                    {term}
-                  </button>
-                  {index < popularSearches.length - 1 && (
-                    <span className="text-[#CBD5E1]" aria-hidden="true">·</span>
-                  )}
-                </React.Fragment>
-              );
-            })}
           </div>
 
           {children && <div className="mt-4">{children}</div>}
@@ -249,54 +269,107 @@ export default function Hero({
               }}
               className="relative bg-white rounded-xl border border-[#E2E8F0] overflow-hidden hover:border-[#94A3B8] transition-colors duration-150 group cursor-pointer"
             >
-              {/* Mobile-only Close Button (X) */}
-              <button
-                type="button"
-                id="close-mobile-featured-btn"
-                aria-label="Close featured recipe"
-                onClick={handleCloseMobileFeatured}
-                className="md:hidden absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/95 hover:bg-white active:bg-[#F5F7FA] text-[#212529] hover:text-[#003B73] border border-[#E2E8F0] shadow-xs flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3]"
-              >
-                <X size={16} aria-hidden="true" />
-              </button>
-
               <div
                 className="relative aspect-[16/10] w-full bg-[#F1F5F9] overflow-hidden shrink-0"
                 style={{ aspectRatio: '16 / 10' }}
               >
-                <img
-                  src={featuredMeal.strMealThumb}
-                  alt={featuredMeal.strMeal}
-                  loading="eager"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover block"
-                  style={{ objectFit: 'cover' }}
-                />
-                <span className="absolute top-3 left-3 px-2 py-0.5 rounded bg-[#003B73] text-white text-[11px] font-semibold">
-                  Featured
-                </span>
-              </div>
+                {!featuredLoaded && (
+                  <div
+                    className="absolute inset-0 bg-[#E2E8F0] animate-pulse"
+                    aria-hidden="true"
+                  />
+                )}
+                {featuredMeal && (
+                  <img
+                    ref={featuredImgRef}
+                    key={featuredMeal.idMeal}
+                    src={featuredMeal.strMealThumb || NEUTRAL_RECIPE_IMAGE}
+                    alt={featuredMeal.strMeal}
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onLoad={() => setFeaturedLoaded(true)}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = NEUTRAL_RECIPE_IMAGE;
+                      setFeaturedLoaded(true);
+                    }}
+                    className={`w-full h-full object-cover block transition-opacity duration-200 ${
+                      featuredLoaded ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                )}
 
-              <div className="p-4">
-                <div className="flex items-center justify-between text-xs text-[#64748B] mb-1.5">
-                  <span className="font-medium text-[#0056B3]">{featuredMeal.strArea} Cuisine</span>
-                  <span>{featuredMeal.prepTime}</span>
+                {/* Badge: Daily Feature / Dish of the Day or Shuffled Selection */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+                  <span className="px-2 py-0.5 rounded bg-[#003B73] text-white text-[11px] font-semibold shadow-xs">
+                    {isShuffled ? 'Featured' : 'Dish of the Day'}
+                  </span>
                 </div>
 
-                <h2 className="font-sans font-semibold text-base text-[#0F172A] group-hover:text-[#0056B3] transition-colors leading-snug mb-1">
+                {/* Controls: Shuffle, Today Reset, and Mobile Close */}
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+                  {isShuffled && (
+                    <button
+                      type="button"
+                      id="hero-reset-daily-btn"
+                      title="Return to today's daily dish"
+                      aria-label="Return to today's daily dish"
+                      onClick={handleResetToDaily}
+                      className="px-2 py-1 rounded-md bg-white/95 hover:bg-white active:bg-[#F5F7FA] text-[#003B73] hover:text-[#0056B3] text-[11px] font-medium border border-[#CBD5E1] shadow-xs inline-flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw size={11} aria-hidden="true" />
+                      <span className="hidden sm:inline">Today</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    id="hero-shuffle-featured-btn"
+                    title="Shuffle to another featured dish"
+                    aria-label="Shuffle to another featured dish"
+                    onClick={handleShuffle}
+                    className="px-2.5 py-1 rounded-md bg-white/95 hover:bg-white active:bg-[#F5F7FA] text-[#003B73] hover:text-[#0056B3] text-xs font-semibold border border-[#CBD5E1] shadow-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Shuffle size={12} aria-hidden="true" />
+                    <span>Shuffle</span>
+                  </button>
+
+                  {/* Mobile-only Close Button (X) */}
+                  <button
+                    type="button"
+                    id="close-mobile-featured-btn"
+                    aria-label="Close featured recipe"
+                    onClick={handleCloseMobileFeatured}
+                    className="md:hidden w-7 h-7 rounded-md bg-white/95 hover:bg-white active:bg-[#F5F7FA] text-[#212529] hover:text-[#003B73] border border-[#CBD5E1] shadow-xs flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <X size={15} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-5">
+                <div className="flex items-center justify-between text-[13px] text-[#64748B] mb-1.5">
+                  <span className="font-medium text-[#0056B3]">{featuredMeal.strArea} Cuisine</span>
+                  <span className="font-medium">{featuredMeal.prepTime}</span>
+                </div>
+
+                <h2 className="font-semibold text-lg sm:text-[19px] text-[#0F172A] group-hover:text-[#0056B3] transition-colors leading-snug mb-1.5">
                   {featuredMeal.strMeal}
                 </h2>
 
-                <p className="text-xs text-[#64748B] leading-relaxed line-clamp-2 mb-3">
+                <p className="text-[14px] text-[#64748B] font-normal leading-relaxed line-clamp-2 mb-3.5">
                   {featuredMeal.description}
                 </p>
 
-                <div className="pt-2.5 border-t border-[#F1F5F9] flex items-center justify-between text-xs">
-                  <span className="text-[#0056B3] font-medium flex items-center gap-1">
+                <div className="pt-2.5 border-t border-[#F1F5F9] flex items-center justify-between text-[13px]">
+                  <span className="text-[#0056B3] font-semibold flex items-center gap-1">
                     <span>View recipe</span>
                     <ArrowRight size={13} aria-hidden="true" />
                   </span>
-                  <span className="text-[#64748B] font-medium text-[11px]">
+                  <span className="text-[#64748B] font-medium text-[12px] sm:text-[13px]">
                     {featuredMeal.difficulty}
                   </span>
                 </div>

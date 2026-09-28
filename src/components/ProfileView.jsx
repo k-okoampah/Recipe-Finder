@@ -60,10 +60,10 @@ export default function ProfileView({
               <User size={20} />
             </div>
             <div>
-              <h1 className="font-serif text-xl font-bold text-[#003B73]">
+              <h1 className="text-xl sm:text-2xl font-semibold text-[#003B73]">
                 Account Profile
               </h1>
-              <p className="text-xs text-[#6c757d] mt-0.5">
+              <p className="text-xs sm:text-[13px] text-[#6c757d] mt-0.5 font-medium">
                 {user?.email || 'Logged In'}
               </p>
             </div>
