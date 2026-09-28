@@ -1,16 +1,17 @@
 import React from 'react';
-import { User, Heart, LogOut, ArrowLeft, Star } from 'lucide-react';
+import { User, Heart, LogOut, ArrowLeft, Star, Database, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRatings } from '../hooks/useRatings.js';
 
 /**
  * ProfileView Component
  *
- * Requirements:
- * - User email
- * - Number of saved recipes
+ * Displays:
+ * - User email, display name, and avatar
+ * - Saved recipes count (Firestore)
+ * - Rated recipes count (Firestore)
+ * - Firebase Authentication & Cloud sync indicator
  * - Log Out button
- * - Clean brand color scheme & simple layout
  *
  * @param {Object} props
  * @param {number} props.favoriteCount
@@ -22,7 +23,7 @@ export default function ProfileView({
   onBackToBrowse,
   onViewFavorites,
 }) {
-  const { user, signOut, isSupabaseConfigured } = useAuth();
+  const { user, signOut } = useAuth();
   const { ratedCount } = useRatings();
 
   const handleSignOut = async () => {
@@ -30,13 +31,7 @@ export default function ProfileView({
     if (onBackToBrowse) onBackToBrowse();
   };
 
-  const formattedDate = user?.created_at
-    ? new Date(user.created_at).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-    : 'Active Member';
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Chef';
 
   return (
     <div id="profile-view-page" className="w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -54,15 +49,30 @@ export default function ProfileView({
       {/* Main Profile Card */}
       <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-[#E2E8F0] bg-white flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-[#E2E8F0] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#EAF4FF] text-[#0056B3] flex items-center justify-center font-bold">
-              <User size={20} />
-            </div>
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={displayName}
+                className="w-12 h-12 rounded-full object-cover border-2 border-[#0056B3]"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-[#EAF4FF] text-[#0056B3] flex items-center justify-center font-bold text-lg border border-[#c5e0fc]">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-[#003B73]">
-                Account Profile
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-semibold text-[#003B73]">
+                  {displayName}
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium border border-emerald-200">
+                  <ShieldCheck size={12} />
+                  <span>Firebase Auth</span>
+                </span>
+              </div>
               <p className="text-xs sm:text-[13px] text-[#6c757d] mt-0.5 font-medium">
                 {user?.email || 'Logged In'}
               </p>
@@ -73,10 +83,10 @@ export default function ProfileView({
             type="button"
             id="profile-logout-btn"
             onClick={handleSignOut}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#E2E8F0] hover:border-[#cbd5e1] text-xs font-medium text-[#6c757d] hover:text-[#003B73] hover:bg-[#F5F7FA] transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-md border border-[#E2E8F0] hover:border-[#cbd5e1] text-xs font-medium text-[#6c757d] hover:text-[#003B73] hover:bg-[#F5F7FA] transition-colors cursor-pointer self-start sm:self-auto"
           >
             <LogOut size={14} />
-            <span>Log Out</span>
+            <span>Sign Out</span>
           </button>
         </div>
 
@@ -109,19 +119,20 @@ export default function ProfileView({
               </div>
               <div className="text-xs text-[#64748B] mt-2 inline-flex items-center gap-1">
                 <Star size={12} className="fill-[#FFC107] text-[#FFC107]" />
-                <span>Linked to profile</span>
+                <span>Synced in cloud</span>
               </div>
             </div>
 
             <div className="p-4 rounded-lg bg-[#F5F7FA] border border-[#E2E8F0]">
               <span className="text-xs font-medium text-[#6c757d] block mb-1">
-                Account Status
+                Firestore Database
               </span>
-              <div className="text-sm font-semibold text-[#003B73]">
-                Active Member
+              <div className="text-sm font-semibold text-[#003B73] flex items-center gap-1.5">
+                <Database size={14} className="text-[#0056B3]" />
+                <span>Connected</span>
               </div>
-              <p className="text-xs text-[#6c757d] mt-2">
-                Member since {formattedDate}
+              <p className="text-[11px] text-[#6c757d] mt-2">
+                Favorites, ratings & AI chats safely persisted in Firestore
               </p>
             </div>
           </div>

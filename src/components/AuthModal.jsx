@@ -10,19 +10,33 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 
 /**
- * AuthModal Component
- *
- * Provides:
- * - Log In
- * - Sign Up
- * - Forgot Password
- * - Friendly Log-In-To-Save Prompt when guest clicks the favorite button
- *
- * @param {Object} props
- * @param {boolean} props.isOpen
- * @param {Function} props.onClose
- * @param {'login'|'signup'|'forgot-password'|'prompt'} [props.initialMode='login']
- * @param {Function} [props.onSuccess]
+ * Google SVG Logo
+ */
+function GoogleIcon({ className = 'w-4 h-4' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+      />
+    </svg>
+  );
+}
+
+/**
+ * AuthModal Component with Firebase Google Sign-In & Email Authentication
  */
 export default function AuthModal({
   isOpen,
@@ -30,20 +44,20 @@ export default function AuthModal({
   initialMode = 'login',
   onSuccess,
 }) {
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signInWithGoogle, signIn, signUp, resetPassword } = useAuth();
 
   const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
   const emailInputRef = useRef(null);
   const closeBtnRef = useRef(null);
 
-  // Sync mode when initialMode changes or modal opens
   useEffect(() => {
     if (isOpen) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -60,28 +74,39 @@ export default function AuthModal({
     }
   }, [isOpen, initialMode]);
 
-  // Smooth scroll window to top when switching modes inside AuthModal
   useEffect(() => {
     if (isOpen) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [isOpen, mode]);
 
-  // Handle ESC key
   useEffect(() => {
     if (!isOpen) return;
-
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const handleGoogleSignIn = async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsGoogleSubmitting(true);
+    try {
+      await signInWithGoogle();
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      setErrorMessage(err.message || 'Google sign-in could not be completed.');
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -99,9 +124,9 @@ export default function AuthModal({
       setIsSubmitting(true);
       try {
         await resetPassword(cleanEmail);
-        setSuccessMessage('Password reset instructions have been sent to your email.');
+        setSuccessMessage('Password reset email sent! Check your inbox for instructions.');
       } catch (err) {
-        setErrorMessage(err.message || 'Failed to send reset email. Please try again.');
+        setErrorMessage(err.message || 'Failed to send password reset email.');
       } finally {
         setIsSubmitting(false);
       }
@@ -171,10 +196,26 @@ export default function AuthModal({
             </h2>
 
             <p className="text-xs sm:text-[14px] text-[#6c757d] leading-relaxed mb-6 font-normal">
-              Log in to save recipes to your collection and access them anytime.
+              Sign in with Google to save recipes to Firestore and access your collection across all devices.
             </p>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
+              {/* Google Sign In CTA */}
+              <button
+                type="button"
+                id="auth-prompt-google-btn"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleSubmitting}
+                className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-md bg-white border border-[#CBD5E1] text-[#1E293B] hover:bg-[#F8FAFC] font-semibold text-sm transition-colors shadow-xs cursor-pointer disabled:opacity-60"
+              >
+                {isGoogleSubmitting ? (
+                  <Loader2 size={16} className="animate-spin text-[#0056B3]" />
+                ) : (
+                  <GoogleIcon className="w-4 h-4" />
+                )}
+                <span>Sign in with Google</span>
+              </button>
+
               <button
                 type="button"
                 id="auth-prompt-login-btn"
@@ -182,21 +223,9 @@ export default function AuthModal({
                   setMode('login');
                   setErrorMessage(null);
                 }}
-                className="w-full py-2.5 px-4 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-semibold text-sm transition-colors cursor-pointer"
+                className="w-full py-2 px-4 rounded-md bg-[#F1F5F9] text-[#003B73] hover:bg-[#E2E8F0] font-medium text-xs transition-colors cursor-pointer"
               >
-                Log In
-              </button>
-
-              <button
-                type="button"
-                id="auth-prompt-create-account-btn"
-                onClick={() => {
-                  setMode('signup');
-                  setErrorMessage(null);
-                }}
-                className="w-full py-2.5 px-4 rounded-md bg-white border border-[#E2E8F0] text-[#0056B3] hover:bg-[#EAF4FF] font-semibold text-sm transition-colors cursor-pointer"
-              >
-                Create Account
+                Use Email & Password
               </button>
             </div>
           </div>
@@ -206,7 +235,7 @@ export default function AuthModal({
             <div className="mb-5 pr-6">
               <h2 id="auth-modal-title" className="text-xl sm:text-2xl font-semibold text-[#003B73] leading-tight">
                 {mode === 'login'
-                  ? 'Log In'
+                  ? 'Sign In'
                   : mode === 'signup'
                   ? 'Create Account'
                   : 'Reset Password'}
@@ -215,7 +244,7 @@ export default function AuthModal({
                 {mode === 'login'
                   ? 'Sign in to access your saved recipes.'
                   : mode === 'signup'
-                  ? 'Create an account to save your favorite dishes.'
+                  ? 'Create an account to save your favorite dishes in Firestore.'
                   : 'Enter your email to receive password reset instructions.'}
               </p>
             </div>
@@ -244,6 +273,33 @@ export default function AuthModal({
               </div>
             )}
 
+            {/* Primary Google Sign-in Option */}
+            {mode !== 'forgot-password' && (
+              <div className="mb-4">
+                <button
+                  type="button"
+                  id="auth-google-signin-btn"
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleSubmitting || isSubmitting}
+                  className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-md bg-white border border-[#CBD5E1] text-[#1E293B] hover:bg-[#F8FAFC] font-semibold text-sm transition-colors shadow-xs cursor-pointer disabled:opacity-60"
+                >
+                  {isGoogleSubmitting ? (
+                    <Loader2 size={16} className="animate-spin text-[#0056B3]" />
+                  ) : (
+                    <GoogleIcon className="w-4 h-4" />
+                  )}
+                  <span>Continue with Google</span>
+                </button>
+
+                <div className="relative flex items-center justify-center my-4">
+                  <div className="border-t border-[#E2E8F0] w-full" />
+                  <span className="bg-white px-2 text-[11px] text-[#94A3B8] uppercase tracking-wider font-medium absolute">
+                    or with email
+                  </span>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* Email Input */}
               <div>
@@ -262,7 +318,7 @@ export default function AuthModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isGoogleSubmitting}
                   className="w-full px-3 py-2 text-sm bg-white rounded-md border border-[#E2E8F0] text-[#212529] placeholder:text-[#6c757d]/60 focus:border-[#0056B3] focus:ring-1 focus:ring-[#0056B3] outline-hidden transition-colors disabled:opacity-60"
                 />
               </div>
@@ -299,45 +355,39 @@ export default function AuthModal({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
-                      disabled={isSubmitting}
+                      placeholder="••••••••"
+                      disabled={isSubmitting || isGoogleSubmitting}
                       className="w-full px-3 py-2 pr-10 text-sm bg-white rounded-md border border-[#E2E8F0] text-[#212529] placeholder:text-[#6c757d]/60 focus:border-[#0056B3] focus:ring-1 focus:ring-[#0056B3] outline-hidden transition-colors disabled:opacity-60"
                     />
-                    {/* Password Visibility Toggle */}
                     <button
                       type="button"
-                      id="auth-password-toggle-btn"
                       onClick={() => setShowPassword((prev) => !prev)}
+                      tabIndex={-1}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="absolute right-2.5 p-1 text-[#6c757d] hover:text-[#003B73] rounded-md transition-colors cursor-pointer"
+                      className="absolute right-3 text-[#6c757d] hover:text-[#212529] transition-colors cursor-pointer"
                     >
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
-                  {mode === 'signup' && (
-                    <p className="text-[11px] text-[#6c757d] mt-1">
-                      Must be at least 6 characters.
-                    </p>
-                  )}
                 </div>
               )}
 
-              {/* Submit Button */}
+              {/* Submit CTA */}
               <button
                 type="submit"
-                id="auth-submit-btn"
-                disabled={isSubmitting}
-                className="w-full py-2.5 px-4 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-medium text-sm transition-colors cursor-pointer disabled:opacity-70 mt-1"
+                id="auth-modal-submit-btn"
+                disabled={isSubmitting || isGoogleSubmitting}
+                className="w-full py-2.5 px-4 rounded-md bg-[#0056B3] hover:bg-[#003B73] text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
               >
                 {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 size={15} className="animate-spin shrink-0" />
-                    <span>Processing...</span>
-                  </span>
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Please wait...</span>
+                  </>
                 ) : (
                   <span>
                     {mode === 'login'
-                      ? 'Log In'
+                      ? 'Sign In'
                       : mode === 'signup'
                       ? 'Create Account'
                       : 'Send Reset Link'}
@@ -346,54 +396,57 @@ export default function AuthModal({
               </button>
             </form>
 
-            {/* Bottom Switcher */}
+            {/* Switch Mode Footer */}
             <div className="mt-5 pt-4 border-t border-[#E2E8F0] text-center text-xs text-[#6c757d]">
-              {mode === 'login' ? (
+              {mode === 'login' && (
                 <p>
                   Don't have an account?{' '}
                   <button
                     type="button"
-                    id="switch-to-signup-btn"
+                    id="auth-switch-to-signup"
                     onClick={() => {
                       setMode('signup');
                       setErrorMessage(null);
                       setSuccessMessage(null);
                     }}
-                    className="font-semibold text-[#0056B3] hover:underline cursor-pointer"
+                    className="text-[#0056B3] font-semibold hover:underline cursor-pointer"
                   >
-                    Create Account
+                    Sign up
                   </button>
                 </p>
-              ) : mode === 'signup' ? (
+              )}
+
+              {mode === 'signup' && (
                 <p>
                   Already have an account?{' '}
                   <button
                     type="button"
-                    id="switch-to-login-btn"
+                    id="auth-switch-to-login"
                     onClick={() => {
                       setMode('login');
                       setErrorMessage(null);
                       setSuccessMessage(null);
                     }}
-                    className="font-semibold text-[#0056B3] hover:underline cursor-pointer"
+                    className="text-[#0056B3] font-semibold hover:underline cursor-pointer"
                   >
-                    Log In
+                    Sign in
                   </button>
                 </p>
-              ) : (
+              )}
+
+              {mode === 'forgot-password' && (
                 <p>
-                  Remembered your password?{' '}
+                  Remember your password?{' '}
                   <button
                     type="button"
-                    id="switch-back-to-login-btn"
                     onClick={() => {
                       setMode('login');
                       setErrorMessage(null);
                       setSuccessMessage(null);
                     }}
-                    className="font-semibold text-[#0056B3] hover:underline cursor-pointer"
+                    className="text-[#0056B3] font-semibold hover:underline cursor-pointer"
                   >
-                    Back to Log In
+                    Back to login
                   </button>
                 </p>
               )}

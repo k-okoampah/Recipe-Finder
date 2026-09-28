@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny all unlisted paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation for User Profile
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'createdAt', 'updatedAt']) &&
+        data.uid == userId &&
+        data.uid is string && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() <= 256 &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    // Validation for Favorite Recipe
+    function isValidFavoriteRecipe(data, userId) {
+      return data.keys().hasAll(['idMeal', 'strMeal', 'userId']) &&
+        data.keys().hasOnly(['idMeal', 'strMeal', 'strMealThumb', 'strCategory', 'strArea', 'userId', 'savedAt']) &&
+        data.userId == userId &&
+        data.idMeal is string && data.idMeal.size() > 0 && data.idMeal.size() <= 64 &&
+        data.strMeal is string && data.strMeal.size() > 0 && data.strMeal.size() <= 256 &&
+        (!('strMealThumb' in data) || (data.strMealThumb is string && data.strMealThumb.size() <= 1024)) &&
+        (!('strCategory' in data) || (data.strCategory is string && data.strCategory.size() <= 128)) &&
+        (!('strArea' in data) || (data.strArea is string && data.strArea.size() <= 128)) &&
+        (!('savedAt' in data) || (data.savedAt is string && data.savedAt.size() <= 64));
+    }
+
+    // Validation for Recipe Rating
+    function isValidRecipeRating(data, userId) {
+      return data.keys().hasAll(['recipeId', 'rating', 'userId']) &&
+        data.keys().hasOnly(['recipeId', 'rating', 'userId', 'updatedAt']) &&
+        data.userId == userId &&
+        data.recipeId is string && data.recipeId.size() > 0 && data.recipeId.size() <= 64 &&
+        data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    // Validation for Chat Message
+    function isValidChatMessage(data, userId) {
+      return data.keys().hasAll(['id', 'userId', 'role', 'text']) &&
+        data.keys().hasOnly(['id', 'userId', 'role', 'text', 'timestamp']) &&
+        data.userId == userId &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.role in ['user', 'model', 'system'] &&
+        data.text is string && data.text.size() > 0 && data.text.size() <= 8192 &&
+        (!('timestamp' in data) || (data.timestamp is string && data.timestamp.size() <= 64));
+    }
+
+    // User Profile Document
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(incoming(), userId);
+      allow update: if isOwner(userId) && isValidUserProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().email == existing().email;
+      allow delete: if isOwner(userId);
+
+      // User's Favorite Recipes
+      match /favorites/{recipeId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(recipeId) && isValidFavoriteRecipe(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(recipeId) && isValidFavoriteRecipe(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().idMeal == existing().idMeal;
+        allow delete: if isOwner(userId) && isValidId(recipeId);
+      }
+
+      // User's Star Ratings
+      match /ratings/{recipeId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(recipeId) && isValidRecipeRating(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(recipeId) && isValidRecipeRating(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().recipeId == existing().recipeId;
+        allow delete: if isOwner(userId) && isValidId(recipeId);
+      }
+
+      // User's Chat Messages
+      match /chatMessages/{messageId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(messageId) && isValidChatMessage(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(messageId) && isValidChatMessage(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().id == existing().id;
+        allow delete: if isOwner(userId) && isValidId(messageId);
+      }
+    }
+
+    // Health check test connection path
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

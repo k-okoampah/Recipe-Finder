@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Public and private profile data for registered users",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["uid", "email"]
+    },
+    "FavoriteRecipe": {
+      "title": "Favorite Recipe",
+      "description": "User saved favorite recipe entry",
+      "type": "object",
+      "properties": {
+        "idMeal": { "type": "string", "maxLength": 64 },
+        "strMeal": { "type": "string", "maxLength": 256 },
+        "strMealThumb": { "type": "string", "maxLength": 1024 },
+        "strCategory": { "type": "string", "maxLength": 128 },
+        "strArea": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "savedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["idMeal", "strMeal", "userId"]
+    },
+    "RecipeRating": {
+      "title": "Recipe Rating",
+      "description": "User rating for a specific recipe (1 to 5 stars)",
+      "type": "object",
+      "properties": {
+        "recipeId": { "type": "string", "maxLength": 64 },
+        "rating": { "type": "number" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["recipeId", "rating", "userId"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A single message in a Gemini multi-turn culinary chat thread",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["user", "model", "system"] },
+        "text": { "type": "string", "maxLength": 8192 },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "userId", "role", "text"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile documents keyed by Firebase Auth UID"
+    },
+    "/users/{userId}/favorites/{recipeId}": {
+      "schema": { "$ref": "#/entities/FavoriteRecipe" },
+      "description": "User's saved favorite recipes subcollection"
+    },
+    "/users/{userId}/ratings/{recipeId}": {
+      "schema": { "$ref": "#/entities/RecipeRating" },
+      "description": "User's star ratings subcollection"
+    },
+    "/users/{userId}/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "User's Gemini culinary assistant conversation messages"
+    }
+  }
+}

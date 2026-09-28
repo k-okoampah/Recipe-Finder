@@ -1,30 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
+import {
+  getFirestoreRatings,
+  setFirestoreRating,
+  removeFirestoreRating,
+} from '../services/firebase.js';
 
 const STORAGE_PREFIX = 'recipe_finder_ratings_';
 const GUEST_KEY = 'recipe_finder_ratings_guest';
 
 /**
- * Custom hook to manage recipe 5-star ratings.
+ * Custom hook to manage recipe 5-star ratings synchronized with Firestore.
  * Supports:
  * - Local persistence for guests across browser sessions
- * - Profile-linked persistence for authenticated users
- * - Seamless migration of guest ratings when a user registers or logs in
+ * - Firestore cloud persistence for authenticated users
+ * - Seamless migration of guest ratings when a user registers or logs in with Google
  */
 export function useRatings() {
   const { user, isAuthenticated } = useAuth();
-  const userId = user?.id || null;
+  const userId = user?.uid || user?.id || null;
 
-  // Active storage key depending on authentication state
   const storageKey = isAuthenticated && userId ? `${STORAGE_PREFIX}${userId}` : GUEST_KEY;
 
   const [ratings, setRatings] = useState(() => {
     try {
-      // Check user-specific storage first
       const stored = localStorage.getItem(storageKey);
       if (stored) return JSON.parse(stored);
 
-      // If user just logged in and has no saved ratings yet, check if there are guest ratings to inherit
       if (isAuthenticated && userId) {
         const guestStored = localStorage.getItem(GUEST_KEY);
         if (guestStored) {
@@ -39,68 +41,119 @@ export function useRatings() {
     }
   });
 
-  // Re-sync whenever storageKey changes (e.g., login / logout)
+  // Re-sync and load from Firestore when userId changes
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        setRatings(JSON.parse(stored));
-      } else if (isAuthenticated && userId) {
-        const guestStored = localStorage.getItem(GUEST_KEY);
-        if (guestStored) {
-          const parsedGuest = JSON.parse(guestStored);
-          localStorage.setItem(storageKey, guestStored);
-          setRatings(parsedGuest);
-          return;
+    let isMounted = true;
+
+    async function loadRatings() {
+      if (isAuthenticated && userId) {
+        // First check local storage
+        try {
+          const stored = localStorage.getItem(storageKey);
+          if (stored && isMounted) {
+            setRatings(JSON.parse(stored));
+          }
+        } catch {
+          // ignore
         }
-        setRatings({});
+
+        // Fetch from Firestore
+        try {
+          const cloudRatings = await getFirestoreRatings(userId);
+          if (isMounted && cloudRatings && Object.keys(cloudRatings).length > 0) {
+            setRatings((prev) => {
+              const merged = { ...prev, ...cloudRatings };
+              localStorage.setItem(storageKey, JSON.stringify(merged));
+              return merged;
+            });
+          }
+        } catch (err) {
+          console.warn('Firestore ratings sync notice:', err.message);
+        }
       } else {
-        setRatings({});
+        // Guest mode
+        try {
+          const stored = localStorage.getItem(GUEST_KEY);
+          if (stored && isMounted) {
+            setRatings(JSON.parse(stored));
+          } else if (isMounted) {
+            setRatings({});
+          }
+        } catch {
+          if (isMounted) setRatings({});
+        }
       }
-    } catch {
-      setRatings({});
     }
+
+    loadRatings();
+
+    return () => {
+      isMounted = false;
+    };
   }, [storageKey, isAuthenticated, userId]);
 
   // Set or update a recipe's star rating (1 to 5)
-  const setRecipeRating = useCallback((recipeId, rating) => {
-    if (!recipeId) return;
-    const cleanId = String(recipeId);
-    const starVal = Math.max(1, Math.min(5, Number(rating)));
+  const setRecipeRating = useCallback(
+    (recipeId, rating) => {
+      if (!recipeId) return;
+      const cleanId = String(recipeId);
+      const starVal = Math.max(1, Math.min(5, Number(rating)));
 
-    setRatings((prev) => {
-      const next = { ...prev, [cleanId]: starVal };
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(next));
-      } catch (err) {
-        console.warn('Rating storage notice:', err);
+      setRatings((prev) => {
+        const next = { ...prev, [cleanId]: starVal };
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch (err) {
+          console.warn('Rating storage notice:', err);
+        }
+        return next;
+      });
+
+      // Persist to Firestore if authenticated
+      if (isAuthenticated && userId) {
+        setFirestoreRating(userId, cleanId, starVal).catch((err) => {
+          console.warn('Could not save rating to Firestore:', err);
+        });
       }
-      return next;
-    });
-  }, [storageKey]);
+    },
+    [storageKey, isAuthenticated, userId]
+  );
 
-  // Remove rating (reset to unrated)
-  const removeRecipeRating = useCallback((recipeId) => {
-    if (!recipeId) return;
-    const cleanId = String(recipeId);
+  // Remove rating
+  const removeRecipeRating = useCallback(
+    (recipeId) => {
+      if (!recipeId) return;
+      const cleanId = String(recipeId);
 
-    setRatings((prev) => {
-      const next = { ...prev };
-      delete next[cleanId];
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(next));
-      } catch (err) {
-        console.warn('Rating removal notice:', err);
+      setRatings((prev) => {
+        const next = { ...prev };
+        delete next[cleanId];
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch (err) {
+          console.warn('Rating removal notice:', err);
+        }
+        return next;
+      });
+
+      // Remove from Firestore if authenticated
+      if (isAuthenticated && userId) {
+        removeFirestoreRating(userId, cleanId).catch((err) => {
+          console.warn('Could not remove rating from Firestore:', err);
+        });
       }
-      return next;
-    });
-  }, [storageKey]);
+    },
+    [storageKey, isAuthenticated, userId]
+  );
 
   // Get rating for a specific recipe
-  const getRecipeRating = useCallback((recipeId) => {
-    if (!recipeId) return 0;
-    return ratings[String(recipeId)] || 0;
-  }, [ratings]);
+  const getRecipeRating = useCallback(
+    (recipeId) => {
+      if (!recipeId) return 0;
+      return ratings[String(recipeId)] || 0;
+    },
+    [ratings]
+  );
 
   const ratedCount = Object.keys(ratings).length;
 

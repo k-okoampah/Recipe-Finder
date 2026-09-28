@@ -9,6 +9,8 @@ import ProfileView from './components/ProfileView.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import Footer from './components/Footer.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
+import CulinaryChat from './components/CulinaryChat.jsx';
+import { ChefHat } from 'lucide-react';
 import { useAuth } from './context/AuthContext.jsx';
 import { useFavorites } from './hooks/useFavorites.js';
 import {
@@ -42,6 +44,10 @@ export default function App() {
 
   // Mobile-only Featured Recipe dismissal (React state only, reset on page reload)
   const [isMobileFeaturedClosed, setIsMobileFeaturedClosed] = useState(false);
+
+  // Gemini Culinary Assistant Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatContextRecipe, setChatContextRecipe] = useState(null);
 
   // Reusable favorites management hook
   const {
@@ -415,8 +421,47 @@ export default function App() {
           isFavorite={isFavorite(selectedRecipe.idMeal)}
           onToggleFavorite={handleToggleFavorite}
           onClose={() => setSelectedRecipe(null)}
+          onAskChef={(recipe) => {
+            setChatContextRecipe(recipe);
+            setIsChatOpen(true);
+          }}
         />
       )}
+
+      {/* Floating Culinary AI Assistant Trigger Button (Screen Only) */}
+      {!isChatOpen && (
+        <aside aria-label="Culinary AI Assistant quick action" className="print:hidden">
+          <button
+            type="button"
+            id="floating-chat-trigger-btn"
+            onClick={() => {
+              setChatContextRecipe(null);
+              setIsChatOpen(true);
+            }}
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#003B73] hover:bg-[#0056B3] text-white shadow-xl hover:shadow-2xl transition-all duration-200 border-2 border-white/20 group cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
+            aria-label="Open Culinary AI Assistant"
+            title="Ask Chef Kwame AI Assistant"
+          >
+            <div className="relative">
+              <ChefHat size={20} className="text-[#FFC107] group-hover:scale-110 transition-transform" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#003B73]" />
+            </div>
+            <span className="font-semibold text-xs sm:text-sm tracking-tight pr-1">Ask Chef AI</span>
+          </button>
+        </aside>
+      )}
+
+      {/* Multi-turn Gemini Culinary Chat Modal / Drawer */}
+      <div className="print:hidden">
+        <CulinaryChat
+          isOpen={isChatOpen}
+          onClose={() => {
+            setIsChatOpen(false);
+            setChatContextRecipe(null);
+          }}
+          initialContextRecipe={chatContextRecipe}
+        />
+      </div>
 
       {/* Authentication Dialog Modal (Login, Signup, Reset Password, Prompt) */}
       <div className="print:hidden">

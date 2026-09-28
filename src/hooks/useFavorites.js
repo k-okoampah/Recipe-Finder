@@ -1,74 +1,74 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
-  isSupabaseConfigured,
-  getFavoritesFromSupabase,
-  addFavoriteToSupabase,
-  removeFavoriteFromSupabase,
-} from '../services/supabase.js';
+  getFirestoreFavorites,
+  addFirestoreFavorite,
+  removeFirestoreFavorite,
+  subscribeFirestoreFavorites,
+} from '../services/firebase.js';
 
 const STORAGE_PREFIX = 'recipe_finder_favs_';
 
 /**
- * Custom hook for managing recipe favorites synchronized with Supabase database.
- * Supports optimistic UI updates, multi-device cloud persistence, and guest protection.
+ * Custom hook for managing recipe favorites synchronized with Firebase Firestore database.
+ * Supports optimistic UI updates, real-time Firestore sync, and offline-first cache.
  */
 export function useFavorites() {
   const { user, isAuthenticated } = useAuth();
-  const userId = user?.id || null;
+  const userId = user?.uid || user?.id || null;
 
   const [favorites, setFavorites] = useState([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
 
-  // Sync favorites when user changes
+  // Sync favorites when user changes and attach real-time Firestore listener
   useEffect(() => {
     let isMounted = true;
 
-    async function loadUserFavorites() {
-      if (!userId) {
-        // Logged out: no favorites
-        setFavorites([]);
-        return;
-      }
-
-      setLoadingFavorites(true);
-
-      // Check local cache first for instant render
-      const localKey = `${STORAGE_PREFIX}${userId}`;
-      try {
-        const cached = localStorage.getItem(localKey);
-        if (cached && isMounted) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed)) {
-            setFavorites(parsed);
-          }
-        }
-      } catch (err) {
-        console.warn('Cache read notice:', err);
-      }
-
-      // Fetch from Supabase if configured
-      if (isSupabaseConfigured) {
-        try {
-          const cloudFavorites = await getFavoritesFromSupabase(userId);
-          if (isMounted && cloudFavorites) {
-            setFavorites(cloudFavorites);
-            localStorage.setItem(localKey, JSON.stringify(cloudFavorites));
-          }
-        } catch (err) {
-          console.warn('Could not sync with Supabase favorites:', err.message);
-        }
-      }
-
-      if (isMounted) {
-        setLoadingFavorites(false);
-      }
+    if (!userId) {
+      setFavorites([]);
+      return;
     }
 
-    loadUserFavorites();
+    setLoadingFavorites(true);
+
+    // Check local cache first for instant render
+    const localKey = `${STORAGE_PREFIX}${userId}`;
+    try {
+      const cached = localStorage.getItem(localKey);
+      if (cached && isMounted) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          setFavorites(parsed);
+        }
+      }
+    } catch (err) {
+      console.warn('Cache read notice:', err);
+    }
+
+    // Attach real-time Firestore listener
+    let unsubscribeFirestore = () => {};
+    try {
+      unsubscribeFirestore = subscribeFirestoreFavorites(userId, (cloudFavorites) => {
+        if (isMounted && cloudFavorites) {
+          setFavorites(cloudFavorites);
+          localStorage.setItem(localKey, JSON.stringify(cloudFavorites));
+          setLoadingFavorites(false);
+        }
+      });
+    } catch (err) {
+      console.warn('Firestore subscription notice, falling back to manual fetch:', err);
+      getFirestoreFavorites(userId).then((cloudFavorites) => {
+        if (isMounted && cloudFavorites) {
+          setFavorites(cloudFavorites);
+          localStorage.setItem(localKey, JSON.stringify(cloudFavorites));
+        }
+        if (isMounted) setLoadingFavorites(false);
+      });
+    }
 
     return () => {
       isMounted = false;
+      unsubscribeFirestore();
     };
   }, [userId]);
 
@@ -119,13 +119,11 @@ export function useFavorites() {
         return [normalizedMeal, ...prev];
       });
 
-      // Background cloud sync
-      if (isSupabaseConfigured) {
-        try {
-          await addFavoriteToSupabase(userId, normalizedMeal);
-        } catch (err) {
-          console.warn('Cloud sync error when adding favorite:', err.message);
-        }
+      // Background Firestore persistence
+      try {
+        await addFirestoreFavorite(userId, normalizedMeal);
+      } catch (err) {
+        console.warn('Firestore error when adding favorite:', err.message);
       }
     },
     [userId]
@@ -142,13 +140,11 @@ export function useFavorites() {
       // Optimistic update
       setFavorites((prev) => prev.filter((item) => String(item.idMeal) !== targetId));
 
-      // Background cloud sync
-      if (isSupabaseConfigured) {
-        try {
-          await removeFavoriteFromSupabase(userId, targetId);
-        } catch (err) {
-          console.warn('Cloud sync error when removing favorite:', err.message);
-        }
+      // Background Firestore persistence
+      try {
+        await removeFirestoreFavorite(userId, targetId);
+      } catch (err) {
+        console.warn('Firestore error when removing favorite:', err.message);
       }
     },
     [userId]

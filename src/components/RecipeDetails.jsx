@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Youtube, ExternalLink, Check, Heart, Clock, Printer, Share2 } from 'lucide-react';
+import { X, Youtube, ExternalLink, Check, Heart, Clock, Printer, Share2, Sparkles } from 'lucide-react';
 import { extractIngredients } from '../services/recipeApi.js';
 import StarRating from './StarRating.jsx';
 import NutritionalInfo from './NutritionalInfo.jsx';
@@ -37,6 +37,7 @@ export default function RecipeDetails({
   onClose,
   isFavorite = false,
   onToggleFavorite,
+  onAskChef,
 }) {
   if (!recipe) return null;
 
@@ -353,6 +354,20 @@ export default function RecipeDetails({
                     </>
                   )}
                 </button>
+
+                {/* Ask Chef AI Button */}
+                {onAskChef && (
+                  <button
+                    type="button"
+                    id="recipe-details-action-ask-chef"
+                    onClick={() => onAskChef(recipe)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer border bg-[#003B73] hover:bg-[#0056B3] text-white border-[#003B73] shadow-xs"
+                    title="Ask Chef Kwame AI tips & pairings for this recipe"
+                  >
+                    <Sparkles size={14} className="text-[#FFC107]" aria-hidden="true" />
+                    <span>Ask Chef AI</span>
+                  </button>
+                )}
 
                 {/* Print Recipe Button */}
                 <button
