@@ -2,11 +2,7 @@ import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
-import { testFirestoreConnection } from './services/firebase.js';
 import './styles/index.css';
-
-// Test connection to Firestore per Firebase skill
-testFirestoreConnection();
 
 // Ensure browser does not restore previous scroll position on reload
 if (typeof window !== 'undefined') {

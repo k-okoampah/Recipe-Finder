@@ -289,40 +289,40 @@ export default function Navbar({
               )}
             </div>
 
-            {/* If Authenticated: Show Favorites and Profile */}
+            {/* Favorites with Dynamic Badge (Available for Guests & Logged-In Users) */}
+            <button
+              type="button"
+              id="navbar-link-favorites"
+              onClick={handleNavFavorites}
+              aria-current={currentView === 'favorites' ? 'page' : undefined}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
+                currentView === 'favorites'
+                  ? 'bg-[#EAF4FF] text-[#003B73] font-semibold'
+                  : 'text-[#212529] hover:bg-[#F5F7FA] hover:text-[#003B73]'
+              }`}
+            >
+              <Heart
+                size={14}
+                className={
+                  currentView === 'favorites'
+                    ? 'fill-[#FFC107] text-[#003B73]'
+                    : 'text-[#6c757d]'
+                }
+              />
+              <span>Favorites</span>
+              {favoriteCount > 0 && (
+                <span
+                  id="navbar-favorites-counter"
+                  className="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[11px] font-bold bg-[#FFC107] text-[#003B73]"
+                >
+                  {favoriteCount}
+                </span>
+              )}
+            </button>
+
+            {/* User Account Controls */}
             {isAuthenticated ? (
               <>
-                {/* Favorites with Dynamic Badge */}
-                <button
-                  type="button"
-                  id="navbar-link-favorites"
-                  onClick={handleNavFavorites}
-                  aria-current={currentView === 'favorites' ? 'page' : undefined}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[15px] font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2 ${
-                    currentView === 'favorites'
-                      ? 'bg-[#EAF4FF] text-[#003B73] font-semibold'
-                      : 'text-[#212529] hover:bg-[#F5F7FA] hover:text-[#003B73]'
-                  }`}
-                >
-                  <Heart
-                    size={14}
-                    className={
-                      currentView === 'favorites'
-                        ? 'fill-[#FFC107] text-[#003B73]'
-                        : 'text-[#6c757d]'
-                    }
-                  />
-                  <span>Favorites</span>
-                  {favoriteCount > 0 && (
-                    <span
-                      id="navbar-favorites-counter"
-                      className="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full text-[11px] font-bold bg-[#FFC107] text-[#003B73]"
-                    >
-                      {favoriteCount}
-                    </span>
-                  )}
-                </button>
-
                 {/* Profile */}
                 <button
                   type="button"
@@ -526,34 +526,36 @@ export default function Navbar({
             )}
           </div>
 
-          {/* Authenticated Links for Mobile */}
+          {/* Mobile Favorites (Available for all users) */}
+          <button
+            type="button"
+            id="mobile-link-favorites"
+            onClick={handleNavFavorites}
+            aria-current={currentView === 'favorites' ? 'page' : undefined}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] ${
+              currentView === 'favorites'
+                ? 'bg-[#003B73] text-white font-semibold shadow-xs'
+                : 'text-[#212529] hover:bg-[#EAF4FF]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Heart
+                size={17}
+                aria-hidden="true"
+                className={currentView === 'favorites' ? 'fill-[#FFC107] text-[#FFC107]' : 'text-[#0056B3] fill-[#FFC107]'}
+              />
+              <span>Favorites</span>
+            </div>
+            {favoriteCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#FFC107] text-[#003B73]">
+                {favoriteCount}
+              </span>
+            )}
+          </button>
+
+          {/* User Account Controls for Mobile */}
           {isAuthenticated ? (
             <>
-              {/* Mobile Favorites */}
-              <button
-                type="button"
-                id="mobile-link-favorites"
-                onClick={handleNavFavorites}
-                aria-current={currentView === 'favorites' ? 'page' : undefined}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] ${
-                  currentView === 'favorites'
-                    ? 'bg-[#003B73] text-white font-semibold shadow-xs'
-                    : 'text-[#212529] hover:bg-[#EAF4FF]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Heart
-                    size={17}
-                    aria-hidden="true"
-                    className={currentView === 'favorites' ? 'fill-[#FFC107] text-[#FFC107]' : 'text-[#0056B3] fill-[#FFC107]'}
-                  />
-                  <span>Favorites</span>
-                </div>
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#FFC107] text-[#003B73]">
-                  {favoriteCount}
-                </span>
-              </button>
-
               {/* Mobile Profile */}
               <button
                 type="button"

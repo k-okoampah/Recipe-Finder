@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   getFirestoreFavorites,
@@ -7,63 +7,162 @@ import {
   subscribeFirestoreFavorites,
 } from '../services/firebase.js';
 
-const STORAGE_PREFIX = 'recipe_finder_favs_';
+const GUEST_STORAGE_KEY = 'recipe_finder_local_favorites';
+const USER_STORAGE_PREFIX = 'recipe_finder_favs_';
 
 /**
- * Custom hook for managing recipe favorites synchronized with Firebase Firestore database.
- * Supports optimistic UI updates, real-time Firestore sync, and offline-first cache.
+ * Normalizes a recipe object for consistent storage
+ */
+function normalizeMeal(recipe) {
+  if (!recipe || !recipe.idMeal) return null;
+  return {
+    idMeal: String(recipe.idMeal),
+    strMeal: recipe.strMeal || 'Recipe',
+    strMealThumb: recipe.strMealThumb || '',
+    strCategory: recipe.strCategory || 'General',
+    strArea: recipe.strArea || 'International',
+    prepTime: recipe.prepTime || '25-30 min',
+    difficulty: recipe.difficulty || 'Easy',
+  };
+}
+
+/**
+ * Custom hook for managing a local-first recipe favorites system.
+ * 
+ * Capabilities:
+ * - 100% Local Storage persistence for all users (guests and members alike)
+ * - Seamless background Firestore synchronization when authenticated
+ * - Automatic migration of local guest favorites to cloud upon login
+ * - Real-time live updates across browser tabs
  */
 export function useFavorites() {
   const { user, isAuthenticated } = useAuth();
   const userId = user?.uid || user?.id || null;
+  const prevUserIdRef = useRef(userId);
 
-  const [favorites, setFavorites] = useState([]);
+  // Initialize from localStorage immediately for zero layout shift & instant loading
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      if (typeof window === 'undefined') return [];
+
+      // If user is authenticated, check their user-specific cache first
+      if (userId) {
+        const userCache = localStorage.getItem(`${USER_STORAGE_PREFIX}${userId}`);
+        if (userCache) {
+          const parsed = JSON.parse(userCache);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      }
+
+      // Check global local storage (for guests or offline)
+      const guestCache = localStorage.getItem(GUEST_STORAGE_KEY);
+      if (guestCache) {
+        const parsed = JSON.parse(guestCache);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return [];
+    } catch (e) {
+      console.warn('Error reading initial favorites from localStorage:', e);
+      return [];
+    }
+  });
+
   const [loadingFavorites, setLoadingFavorites] = useState(false);
 
-  // Sync favorites when user changes and attach real-time Firestore listener
+  // Sync favorites when auth state changes (guest <-> logged in)
   useEffect(() => {
     let isMounted = true;
 
+    // Guest mode: load from local storage
     if (!userId) {
-      setFavorites([]);
+      try {
+        const guestCache = localStorage.getItem(GUEST_STORAGE_KEY);
+        if (guestCache && isMounted) {
+          const parsed = JSON.parse(guestCache);
+          if (Array.isArray(parsed)) {
+            setFavorites(parsed);
+          }
+        }
+      } catch (err) {
+        console.warn('Error reading guest favorites:', err);
+      }
+      prevUserIdRef.current = null;
       return;
     }
 
+    // Authenticated mode:
     setLoadingFavorites(true);
+    const userStorageKey = `${USER_STORAGE_PREFIX}${userId}`;
 
-    // Check local cache first for instant render
-    const localKey = `${STORAGE_PREFIX}${userId}`;
+    // Read existing user cache or local cache
+    let localItems = [];
     try {
-      const cached = localStorage.getItem(localKey);
-      if (cached && isMounted) {
+      const cached = localStorage.getItem(userStorageKey) || localStorage.getItem(GUEST_STORAGE_KEY);
+      if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) {
-          setFavorites(parsed);
+          localItems = parsed;
+          if (isMounted) setFavorites(parsed);
         }
       }
     } catch (err) {
-      console.warn('Cache read notice:', err);
+      console.warn('Error reading cached favorites for user:', err);
     }
 
-    // Attach real-time Firestore listener
+    // If user just logged in and had local guest favorites, migrate them to Firestore
+    const justLoggedIn = !prevUserIdRef.current && userId;
+    if (justLoggedIn && localItems.length > 0) {
+      localItems.forEach((item) => {
+        addFirestoreFavorite(userId, item).catch(() => {});
+      });
+    }
+    prevUserIdRef.current = userId;
+
+    // Listen to Firestore real-time updates
     let unsubscribeFirestore = () => {};
     try {
       unsubscribeFirestore = subscribeFirestoreFavorites(userId, (cloudFavorites) => {
         if (isMounted && cloudFavorites) {
-          setFavorites(cloudFavorites);
-          localStorage.setItem(localKey, JSON.stringify(cloudFavorites));
+          // Merge local and cloud to ensure nothing is lost
+          setFavorites((prev) => {
+            const combinedMap = new Map();
+            // Cloud items take precedence
+            cloudFavorites.forEach((m) => combinedMap.set(String(m.idMeal), m));
+            // Keep any local items that may be pending sync
+            prev.forEach((m) => {
+              if (!combinedMap.has(String(m.idMeal))) {
+                combinedMap.set(String(m.idMeal), m);
+              }
+            });
+            const merged = Array.from(combinedMap.values());
+            try {
+              localStorage.setItem(userStorageKey, JSON.stringify(merged));
+              localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(merged));
+            } catch (e) {
+              console.warn('Cache write notice:', e);
+            }
+            return merged;
+          });
           setLoadingFavorites(false);
         }
       });
     } catch (err) {
       console.warn('Firestore subscription notice, falling back to manual fetch:', err);
-      getFirestoreFavorites(userId).then((cloudFavorites) => {
-        if (isMounted && cloudFavorites) {
-          setFavorites(cloudFavorites);
-          localStorage.setItem(localKey, JSON.stringify(cloudFavorites));
-        }
-        if (isMounted) setLoadingFavorites(false);
-      });
+      getFirestoreFavorites(userId)
+        .then((cloudFavorites) => {
+          if (isMounted && cloudFavorites && Array.isArray(cloudFavorites)) {
+            setFavorites(cloudFavorites);
+            try {
+              localStorage.setItem(userStorageKey, JSON.stringify(cloudFavorites));
+              localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(cloudFavorites));
+            } catch (e) {
+              console.warn('Cache write notice:', e);
+            }
+          }
+        })
+        .finally(() => {
+          if (isMounted) setLoadingFavorites(false);
+        });
     }
 
     return () => {
@@ -72,88 +171,117 @@ export function useFavorites() {
     };
   }, [userId]);
 
-  // Persist current favorites in user-scoped cache
+  // Persist favorites in localStorage whenever favorites array changes
   useEffect(() => {
-    if (userId) {
-      const localKey = `${STORAGE_PREFIX}${userId}`;
-      try {
-        localStorage.setItem(localKey, JSON.stringify(favorites));
-      } catch (err) {
-        console.warn('Could not save favorites to cache:', err);
+    try {
+      const serialized = JSON.stringify(favorites);
+      localStorage.setItem(GUEST_STORAGE_KEY, serialized);
+      if (userId) {
+        localStorage.setItem(`${USER_STORAGE_PREFIX}${userId}`, serialized);
       }
+    } catch (err) {
+      console.warn('Could not persist favorites to localStorage:', err);
     }
   }, [favorites, userId]);
 
-  // Quick lookup set of favorite IDs
+  // Quick Set for O(1) membership checks
   const favoriteIdSet = useMemo(() => {
     return new Set(favorites.map((item) => String(item.idMeal)));
   }, [favorites]);
 
-  // Check if recipe is favorited
+  /**
+   * Check if a recipe is saved in favorites.
+   * Works for both guests and authenticated users!
+   */
   const isFavorite = useCallback(
     (recipeOrId) => {
-      if (!recipeOrId || !isAuthenticated) return false;
+      if (!recipeOrId) return false;
       const id = typeof recipeOrId === 'object' ? recipeOrId.idMeal : recipeOrId;
       return favoriteIdSet.has(String(id));
     },
-    [favoriteIdSet, isAuthenticated]
+    [favoriteIdSet]
   );
 
-  // Add favorite
+  /**
+   * Add a recipe to local favorites (and Firestore if authenticated)
+   */
   const addFavorite = useCallback(
     async (recipe) => {
-      if (!recipe || !recipe.idMeal || !userId) return;
+      const normalized = normalizeMeal(recipe);
+      if (!normalized) return;
 
-      const normalizedMeal = {
-        idMeal: String(recipe.idMeal),
-        strMeal: recipe.strMeal || 'Recipe',
-        strMealThumb: recipe.strMealThumb || '',
-        strCategory: recipe.strCategory || 'General',
-        strArea: recipe.strArea || 'International',
-      };
+      const targetId = normalized.idMeal;
 
-      // Optimistic update
+      // Optimistic local state update
       setFavorites((prev) => {
-        const exists = prev.some((item) => String(item.idMeal) === String(recipe.idMeal));
+        const exists = prev.some((item) => String(item.idMeal) === targetId);
         if (exists) return prev;
-        return [normalizedMeal, ...prev];
+        const next = [normalized, ...prev];
+        try {
+          localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(next));
+          if (userId) {
+            localStorage.setItem(`${USER_STORAGE_PREFIX}${userId}`, JSON.stringify(next));
+          }
+        } catch (e) {
+          console.warn('Local storage write notice:', e);
+        }
+        return next;
       });
 
-      // Background Firestore persistence
-      try {
-        await addFirestoreFavorite(userId, normalizedMeal);
-      } catch (err) {
-        console.warn('Firestore error when adding favorite:', err.message);
+      // Background Firestore sync if authenticated
+      if (userId) {
+        try {
+          await addFirestoreFavorite(userId, normalized);
+        } catch (err) {
+          console.warn('Firestore sync notice (local save succeeded):', err.message);
+        }
       }
     },
     [userId]
   );
 
-  // Remove favorite
+  /**
+   * Remove a recipe from local favorites (and Firestore if authenticated)
+   */
   const removeFavorite = useCallback(
     async (recipeOrId) => {
-      if (!recipeOrId || !userId) return;
+      if (!recipeOrId) return;
       const targetId = String(
         typeof recipeOrId === 'object' ? recipeOrId.idMeal : recipeOrId
       );
 
-      // Optimistic update
-      setFavorites((prev) => prev.filter((item) => String(item.idMeal) !== targetId));
+      // Optimistic local state update
+      setFavorites((prev) => {
+        const next = prev.filter((item) => String(item.idMeal) !== targetId);
+        try {
+          localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(next));
+          if (userId) {
+            localStorage.setItem(`${USER_STORAGE_PREFIX}${userId}`, JSON.stringify(next));
+          }
+        } catch (e) {
+          console.warn('Local storage write notice:', e);
+        }
+        return next;
+      });
 
-      // Background Firestore persistence
-      try {
-        await removeFirestoreFavorite(userId, targetId);
-      } catch (err) {
-        console.warn('Firestore error when removing favorite:', err.message);
+      // Background Firestore sync if authenticated
+      if (userId) {
+        try {
+          await removeFirestoreFavorite(userId, targetId);
+        } catch (err) {
+          console.warn('Firestore removal notice (local save updated):', err.message);
+        }
       }
     },
     [userId]
   );
 
-  // Toggle favorite status
+  /**
+   * Toggle a recipe's favorite status
+   */
   const toggleFavorite = useCallback(
     (recipe) => {
-      if (!recipe || !recipe.idMeal || !userId) return;
+      if (!recipe) return;
       const targetId = String(recipe.idMeal);
 
       if (favoriteIdSet.has(targetId)) {
@@ -162,8 +290,23 @@ export function useFavorites() {
         addFavorite(recipe);
       }
     },
-    [favoriteIdSet, addFavorite, removeFavorite, userId]
+    [favoriteIdSet, addFavorite, removeFavorite]
   );
+
+  /**
+   * Clear all local favorites
+   */
+  const clearFavorites = useCallback(() => {
+    setFavorites([]);
+    try {
+      localStorage.removeItem(GUEST_STORAGE_KEY);
+      if (userId) {
+        localStorage.removeItem(`${USER_STORAGE_PREFIX}${userId}`);
+      }
+    } catch (e) {
+      console.warn('Error clearing local favorites:', e);
+    }
+  }, [userId]);
 
   return {
     favorites,
@@ -173,6 +316,7 @@ export function useFavorites() {
     addFavorite,
     removeFavorite,
     toggleFavorite,
+    clearFavorites,
     isAuthenticated,
   };
 }

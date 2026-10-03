@@ -2,8 +2,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import {
   auth,
   signInWithGoogle as firebaseGoogleSignIn,
+  signUpWithEmail as firebaseSignUpWithEmail,
+  signInWithEmail as firebaseSignInWithEmail,
+  sendPasswordReset as firebaseSendPasswordReset,
   signOutUser as firebaseSignOut,
   syncUserProfile,
+  formatAuthError,
 } from '../services/firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -85,68 +89,114 @@ export function AuthProvider({ children }) {
       }
     } catch (err) {
       console.error('Google Sign-in error:', err);
-      const msg = err?.code === 'auth/popup-closed-by-user'
-        ? 'Sign-in window was closed. Please try again.'
-        : 'Google Sign-in could not be completed. Please try again.';
-      setAuthError(msg);
-      throw new Error(msg);
+      const formatted = formatAuthError(err);
+      setAuthError(formatted);
+      const customErr = new Error(formatted.message);
+      customErr.authDetails = formatted;
+      throw customErr;
     }
   }, []);
 
   /**
-   * Email Sign Up fallback
+   * Email Sign Up with Firebase Auth
    */
-  const signUp = useCallback(async (email, password) => {
+  const signUp = useCallback(async (email, password, displayName = '') => {
     setAuthError(null);
     const cleanEmail = (email || '').trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
-      const err = 'Please enter a valid email address.';
+      const err = { title: 'Invalid Email', message: 'Please enter a valid email address.' };
       setAuthError(err);
-      throw new Error(err);
+      throw new Error(err.message);
     }
     if (!password || password.length < 6) {
-      const err = 'Password must be at least 6 characters long.';
+      const err = { title: 'Weak Password', message: 'Password must be at least 6 characters long.' };
       setAuthError(err);
-      throw new Error(err);
+      throw new Error(err.message);
     }
 
-    // Local user creation when not using Google provider
-    const newUser = {
-      uid: 'user_' + Math.random().toString(36).substring(2, 11),
-      id: 'user_' + Math.random().toString(36).substring(2, 11),
-      email: cleanEmail,
-      displayName: cleanEmail.split('@')[0],
-      createdAt: new Date().toISOString(),
-    };
-    newUser.id = newUser.uid;
-    localStorage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(newUser));
-    setUser(newUser);
-    return { user: newUser };
+    try {
+      const fbUser = await firebaseSignUpWithEmail(cleanEmail, password, displayName);
+      if (fbUser) {
+        const normalized = {
+          uid: fbUser.uid,
+          id: fbUser.uid,
+          email: fbUser.email || cleanEmail,
+          displayName: displayName || cleanEmail.split('@')[0],
+          photoURL: fbUser.photoURL || '',
+        };
+        setUser(normalized);
+        localStorage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(normalized));
+        return { user: normalized };
+      }
+    } catch (err) {
+      console.error('Firebase Email sign up error:', err);
+      const formatted = formatAuthError(err);
+      setAuthError(formatted);
+      const customErr = new Error(formatted.message);
+      customErr.authDetails = formatted;
+      throw customErr;
+    }
   }, []);
 
   /**
-   * Email Sign In fallback
+   * Email Sign In with Firebase Auth
    */
   const signIn = useCallback(async (email, password) => {
     setAuthError(null);
     const cleanEmail = (email || '').trim().toLowerCase();
     if (!cleanEmail || !password) {
-      const err = 'Please enter both your email address and password.';
+      const err = { title: 'Missing Credentials', message: 'Please enter both your email address and password.' };
       setAuthError(err);
-      throw new Error(err);
+      throw new Error(err.message);
     }
 
-    const sessionUser = {
-      uid: 'user_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20),
-      id: 'user_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20),
-      email: cleanEmail,
-      displayName: cleanEmail.split('@')[0],
-      createdAt: new Date().toISOString(),
-    };
-    sessionUser.id = sessionUser.uid;
-    localStorage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(sessionUser));
-    setUser(sessionUser);
-    return { user: sessionUser };
+    try {
+      const fbUser = await firebaseSignInWithEmail(cleanEmail, password);
+      if (fbUser) {
+        const normalized = {
+          uid: fbUser.uid,
+          id: fbUser.uid,
+          email: fbUser.email || cleanEmail,
+          displayName: fbUser.displayName || cleanEmail.split('@')[0],
+          photoURL: fbUser.photoURL || '',
+        };
+        setUser(normalized);
+        localStorage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(normalized));
+        return { user: normalized };
+      }
+    } catch (err) {
+      console.error('Firebase Email sign in error:', err);
+      const formatted = formatAuthError(err);
+      setAuthError(formatted);
+      const customErr = new Error(formatted.message);
+      customErr.authDetails = formatted;
+      throw customErr;
+    }
+  }, []);
+
+  /**
+   * Password Reset with Firebase Auth
+   */
+  const resetPassword = useCallback(async (email) => {
+    setAuthError(null);
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      const err = { title: 'Invalid Email', message: 'Please enter a valid email address.' };
+      setAuthError(err);
+      throw new Error(err.message);
+    }
+
+    try {
+      await firebaseSendPasswordReset(cleanEmail);
+      return true;
+    } catch (err) {
+      console.error('Firebase password reset error:', err);
+      const formatted = formatAuthError(err);
+      setAuthError(formatted);
+      const customErr = new Error(formatted.message);
+      customErr.authDetails = formatted;
+      throw customErr;
+    }
   }, []);
 
   /**
@@ -161,20 +211,6 @@ export function AuthProvider({ children }) {
     }
     localStorage.removeItem(LOCAL_AUTH_STORAGE_KEY);
     setUser(null);
-  }, []);
-
-  /**
-   * Password Reset
-   */
-  const resetPassword = useCallback(async (email) => {
-    setAuthError(null);
-    const cleanEmail = (email || '').trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      const err = 'Please enter a valid email address.';
-      setAuthError(err);
-      throw new Error(err);
-    }
-    return { success: true };
   }, []);
 
   const value = {

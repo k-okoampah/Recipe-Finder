@@ -9,8 +9,6 @@ import ProfileView from './components/ProfileView.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import Footer from './components/Footer.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
-import CulinaryChat from './components/CulinaryChat.jsx';
-import { ChefHat } from 'lucide-react';
 import { useAuth } from './context/AuthContext.jsx';
 import { useFavorites } from './hooks/useFavorites.js';
 import {
@@ -22,11 +20,24 @@ import {
 } from './services/recipeApi.js';
 import { MOCK_RECIPES } from './data/mockRecipes.js';
 
+const INITIAL_CACHE_KEY = 'recipe_finder_cached_meals_v1';
+
 export default function App() {
   const { isAuthenticated } = useAuth();
 
-  // Store results in React state
-  const [recipes, setRecipes] = useState(MOCK_RECIPES);
+  // Store results in React state - hydrate from sessionStorage instantly if available
+  const [recipes, setRecipes] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const cached = sessionStorage.getItem(INITIAL_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      }
+    } catch {}
+    return MOCK_RECIPES;
+  });
   const [activeFilter, setActiveFilter] = useState({ type: 'mealType', value: 'All' });
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,10 +56,6 @@ export default function App() {
   // Mobile-only Featured Recipe dismissal (React state only, reset on page reload)
   const [isMobileFeaturedClosed, setIsMobileFeaturedClosed] = useState(false);
 
-  // Gemini Culinary Assistant Chat state
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatContextRecipe, setChatContextRecipe] = useState(null);
-
   // Reusable favorites management hook
   const {
     favorites,
@@ -57,14 +64,10 @@ export default function App() {
     toggleFavorite,
   } = useFavorites();
 
-  // Intercept favorite toggle when guest is logged out
+  // Toggle favorite for current recipe (saves locally in localStorage; syncs to Firestore if logged in)
   const handleToggleFavorite = useCallback((recipe) => {
-    if (!isAuthenticated) {
-      setAuthModalState({ isOpen: true, mode: 'prompt' });
-      return;
-    }
     toggleFavorite(recipe);
-  }, [isAuthenticated, toggleFavorite]);
+  }, [toggleFavorite]);
 
   // 1. On full page refresh & mount: ensure browser never restores previous scroll position
   useEffect(() => {
@@ -117,6 +120,9 @@ export default function App() {
         const initialMeals = await searchMealsByName('');
         if (isMounted && initialMeals && initialMeals.length > 0) {
           setRecipes(initialMeals);
+          try {
+            sessionStorage.setItem(INITIAL_CACHE_KEY, JSON.stringify(initialMeals));
+          } catch {}
         }
 
         // Check for deep-linked recipe from shared URL
@@ -421,47 +427,8 @@ export default function App() {
           isFavorite={isFavorite(selectedRecipe.idMeal)}
           onToggleFavorite={handleToggleFavorite}
           onClose={() => setSelectedRecipe(null)}
-          onAskChef={(recipe) => {
-            setChatContextRecipe(recipe);
-            setIsChatOpen(true);
-          }}
         />
       )}
-
-      {/* Floating Culinary AI Assistant Trigger Button (Screen Only) */}
-      {!isChatOpen && (
-        <aside aria-label="Culinary AI Assistant quick action" className="print:hidden">
-          <button
-            type="button"
-            id="floating-chat-trigger-btn"
-            onClick={() => {
-              setChatContextRecipe(null);
-              setIsChatOpen(true);
-            }}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#003B73] hover:bg-[#0056B3] text-white shadow-xl hover:shadow-2xl transition-all duration-200 border-2 border-white/20 group cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0056B3] focus-visible:ring-offset-2"
-            aria-label="Open Culinary AI Assistant"
-            title="Ask Chef Kwame AI Assistant"
-          >
-            <div className="relative">
-              <ChefHat size={20} className="text-[#FFC107] group-hover:scale-110 transition-transform" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#003B73]" />
-            </div>
-            <span className="font-semibold text-xs sm:text-sm tracking-tight pr-1">Ask Chef AI</span>
-          </button>
-        </aside>
-      )}
-
-      {/* Multi-turn Gemini Culinary Chat Modal / Drawer */}
-      <div className="print:hidden">
-        <CulinaryChat
-          isOpen={isChatOpen}
-          onClose={() => {
-            setIsChatOpen(false);
-            setChatContextRecipe(null);
-          }}
-          initialContextRecipe={chatContextRecipe}
-        />
-      </div>
 
       {/* Authentication Dialog Modal (Login, Signup, Reset Password, Prompt) */}
       <div className="print:hidden">

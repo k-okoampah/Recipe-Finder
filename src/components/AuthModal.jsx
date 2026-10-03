@@ -6,8 +6,11 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { formatAuthError } from '../services/firebase.js';
 
 /**
  * Google SVG Logo
@@ -53,16 +56,27 @@ export default function AuthModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [authErrorDetails, setAuthErrorDetails] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [copiedDomain, setCopiedDomain] = useState(false);
 
   const emailInputRef = useRef(null);
   const closeBtnRef = useRef(null);
+
+  const handleCopyDomain = (domainToCopy) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(domainToCopy);
+      setCopiedDomain(true);
+      setTimeout(() => setCopiedDomain(false), 2500);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       setMode(initialMode);
       setErrorMessage(null);
+      setAuthErrorDetails(null);
       setSuccessMessage(null);
       setTimeout(() => {
         if (emailInputRef.current && initialMode !== 'prompt') {
@@ -77,6 +91,8 @@ export default function AuthModal({
   useEffect(() => {
     if (isOpen) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      setErrorMessage(null);
+      setAuthErrorDetails(null);
     }
   }, [isOpen, mode]);
 
@@ -95,6 +111,7 @@ export default function AuthModal({
 
   const handleGoogleSignIn = async () => {
     setErrorMessage(null);
+    setAuthErrorDetails(null);
     setSuccessMessage(null);
     setIsGoogleSubmitting(true);
     try {
@@ -102,7 +119,13 @@ export default function AuthModal({
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      setErrorMessage(err.message || 'Google sign-in could not be completed.');
+      const details = err?.authDetails || (err?.code ? formatAuthError(err) : null);
+      if (details) {
+        setAuthErrorDetails(details);
+        setErrorMessage(details.message);
+      } else {
+        setErrorMessage(err.message || 'Google sign-in could not be completed.');
+      }
     } finally {
       setIsGoogleSubmitting(false);
     }
@@ -111,6 +134,7 @@ export default function AuthModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage(null);
+    setAuthErrorDetails(null);
     setSuccessMessage(null);
 
     const cleanEmail = email.trim();
@@ -126,7 +150,13 @@ export default function AuthModal({
         await resetPassword(cleanEmail);
         setSuccessMessage('Password reset email sent! Check your inbox for instructions.');
       } catch (err) {
-        setErrorMessage(err.message || 'Failed to send password reset email.');
+        const details = err?.authDetails || (err?.code ? formatAuthError(err) : null);
+        if (details) {
+          setAuthErrorDetails(details);
+          setErrorMessage(details.message);
+        } else {
+          setErrorMessage(err.message || 'Failed to send password reset email.');
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -156,7 +186,13 @@ export default function AuthModal({
         onClose();
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Authentication failed. Please try again.');
+      const details = err?.authDetails || (err?.code ? formatAuthError(err) : null);
+      if (details) {
+        setAuthErrorDetails(details);
+        setErrorMessage(details.message);
+      } else {
+        setErrorMessage(err.message || 'Authentication failed. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -250,7 +286,38 @@ export default function AuthModal({
             </div>
 
             {/* Error Message Alert */}
-            {errorMessage && (
+            {authErrorDetails?.isUnauthorizedDomain ? (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="p-3.5 rounded-lg bg-[#fff8e1] border border-[#ffe082] text-[#5d4037] text-xs mb-4 shadow-xs"
+              >
+                <div className="flex items-center gap-2 font-semibold text-[#e65100] mb-1">
+                  <AlertCircle size={16} className="shrink-0 text-[#e65100]" />
+                  <span>Domain Authorization Required</span>
+                </div>
+                <p className="text-[12px] text-[#424242] leading-relaxed mb-2.5">
+                  Google Sign-In requires this domain to be authorized in your Firebase project.
+                </p>
+                <div className="bg-white p-2 rounded border border-[#ffe082] flex items-center justify-between gap-2 mb-2.5 font-mono text-[11px] text-[#212121]">
+                  <span className="truncate select-all">{authErrorDetails.domain}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyDomain(authErrorDetails.domain)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#fff3e0] hover:bg-[#ffe0b2] text-[#e65100] font-sans font-semibold text-[11px] cursor-pointer shrink-0 transition-colors"
+                  >
+                    {copiedDomain ? <Check size={12} className="text-green-600" /> : <Copy size={12} />}
+                    <span>{copiedDomain ? 'Copied' : 'Copy Domain'}</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-[#616161] leading-relaxed">
+                  <strong>Fix in Firebase Console:</strong> Go to <em>Authentication &gt; Settings &gt; Authorized domains</em> and click <strong>Add domain</strong> to paste this domain.
+                </p>
+                <div className="mt-2.5 pt-2 border-t border-[#ffe082]/60 text-[11px] text-[#e65100] font-semibold">
+                  Instant option: You can sign up and sign in right away with Email &amp; Password below!
+                </div>
+              </div>
+            ) : errorMessage && (
               <div
                 role="alert"
                 aria-live="polite"

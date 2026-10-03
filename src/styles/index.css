@@ -1,9 +1,8 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Primary Font: Poppins across entire application */
-  --font-primary: 'Poppins', sans-serif;
+  /* Primary Font: Poppins with fast system font fallbacks */
+  --font-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-sans: var(--font-primary);
   --font-serif: var(--font-primary);
 

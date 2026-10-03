@@ -180,12 +180,33 @@ export function normalizeMeal(rawMeal, defaults = {}) {
   };
 }
 
+// Fast in-memory cache and sessionStorage persistence for instant loads
+const memoryCache = new Map();
+const SESSION_CACHE_PREFIX = 'recipe_api_v1_';
+
 /**
- * Generic fetch wrapper with timeout, network error trapping, and JSON safety
+ * Generic fetch wrapper with two-tier caching, timeout, network error trapping, and JSON safety
  * @param {string} endpoint
  * @returns {Promise<any>}
  */
 async function fetchFromApi(endpoint) {
+  // 1. Fast in-memory cache check (0ms response)
+  if (memoryCache.has(endpoint)) {
+    return memoryCache.get(endpoint);
+  }
+
+  // 2. SessionStorage cache check for instant page reloads and back-navigation (0ms response)
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = sessionStorage.getItem(SESSION_CACHE_PREFIX + endpoint);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        memoryCache.set(endpoint, parsed);
+        return parsed;
+      }
+    } catch {}
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -206,7 +227,17 @@ async function fetchFromApi(endpoint) {
     }
 
     try {
-      return JSON.parse(text);
+      const parsedData = JSON.parse(text);
+      // Cache successful response in memory & sessionStorage
+      if (parsedData && parsedData.meals !== undefined) {
+        memoryCache.set(endpoint, parsedData);
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(SESSION_CACHE_PREFIX + endpoint, text);
+          } catch {}
+        }
+      }
+      return parsedData;
     } catch {
       throw new Error('Received an unparseable response from the recipe service.');
     }

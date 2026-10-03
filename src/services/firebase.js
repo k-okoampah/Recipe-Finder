@@ -3,6 +3,10 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from 'firebase/auth';
@@ -13,7 +17,6 @@ import {
   setDoc,
   deleteDoc,
   getDocs,
-  getDocFromServer,
   onSnapshot,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -35,15 +38,91 @@ googleProvider.setCustomParameters({
 });
 
 /**
- * Validates connection to Firestore on initial boot per skill directive
+ * Maps Firebase Auth error codes to helpful, user-friendly diagnostic objects
  */
-export async function testFirestoreConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firebase client is offline. Check network and configuration.');
-    }
+export function formatAuthError(err) {
+  if (!err) return { title: 'Error', message: 'An unknown error occurred. Please try again.' };
+  
+  const code = err.code || '';
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'current domain';
+
+  switch (code) {
+    case 'auth/unauthorized-domain':
+      return {
+        code,
+        isUnauthorizedDomain: true,
+        title: 'Domain Authorization Required',
+        message: `This domain (${currentHost}) is not yet authorized for Google Sign-In in your Firebase Console.`,
+        action: `To enable Google Sign-In, go to Firebase Console > Authentication > Settings > Authorized domains and add "${currentHost}".`,
+        domain: currentHost,
+      };
+    case 'auth/popup-closed-by-user':
+      return {
+        code,
+        title: 'Sign-In Cancelled',
+        message: 'The sign-in window was closed before completing authentication. Please try again.',
+      };
+    case 'auth/popup-blocked':
+      return {
+        code,
+        title: 'Popup Blocked',
+        message: 'The sign-in popup was blocked by your browser. Please allow popups for this site or use Email/Password sign-in.',
+      };
+    case 'auth/operation-not-allowed':
+      return {
+        code,
+        title: 'Provider Not Enabled',
+        message: 'This sign-in method is not enabled in Firebase. Please enable it in Firebase Console > Authentication > Sign-in method.',
+      };
+    case 'auth/email-already-in-use':
+      return {
+        code,
+        title: 'Account Already Exists',
+        message: 'An account with this email address already exists. Please sign in instead.',
+      };
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return {
+        code,
+        title: 'Invalid Credentials',
+        message: 'Incorrect email or password. Please verify your details or reset your password.',
+      };
+    case 'auth/user-not-found':
+      return {
+        code,
+        title: 'Account Not Found',
+        message: 'No account was found with this email. Please check your spelling or sign up.',
+      };
+    case 'auth/weak-password':
+      return {
+        code,
+        title: 'Weak Password',
+        message: 'Password must be at least 6 characters long.',
+      };
+    case 'auth/invalid-email':
+      return {
+        code,
+        title: 'Invalid Email',
+        message: 'Please provide a valid email address.',
+      };
+    case 'auth/too-many-requests':
+      return {
+        code,
+        title: 'Too Many Attempts',
+        message: 'Access temporarily disabled due to multiple failed login attempts. Please reset your password or try again later.',
+      };
+    case 'auth/network-request-failed':
+      return {
+        code,
+        title: 'Network Error',
+        message: 'Failed to connect to Firebase authentication service. Please check your internet connection.',
+      };
+    default:
+      return {
+        code,
+        title: 'Authentication Error',
+        message: err.message || 'Authentication could not be completed. Please try again.',
+      };
   }
 }
 
@@ -59,6 +138,52 @@ export async function signInWithGoogle() {
     return result.user;
   } catch (err) {
     console.error('Google Sign-in failed:', err);
+    throw err;
+  }
+}
+
+/**
+ * Sign up with Email & Password using Firebase Auth
+ */
+export async function signUpWithEmail(email, password, displayName = '') {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    if (displayName && user) {
+      await updateProfile(user, { displayName });
+    }
+    await syncUserProfile(user);
+    return user;
+  } catch (err) {
+    console.error('Email sign up failed:', err);
+    throw err;
+  }
+}
+
+/**
+ * Sign in with Email & Password using Firebase Auth
+ */
+export async function signInWithEmail(email, password) {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    await syncUserProfile(user);
+    return user;
+  } catch (err) {
+    console.error('Email sign in failed:', err);
+    throw err;
+  }
+}
+
+/**
+ * Send password reset email using Firebase Auth
+ */
+export async function sendPasswordReset(email) {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return true;
+  } catch (err) {
+    console.error('Password reset failed:', err);
     throw err;
   }
 }
@@ -212,61 +337,6 @@ export async function removeFirestoreRating(userId, recipeId) {
   const path = `users/${userId}/ratings/${docId}`;
   try {
     await deleteDoc(doc(db, 'users', userId, 'ratings', docId));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, path);
-  }
-}
-
-// ----------------------------------------------------
-// Firestore Chat History Persistence
-// ----------------------------------------------------
-
-export async function getFirestoreChatMessages(userId) {
-  if (!userId) return [];
-  const path = `users/${userId}/chatMessages`;
-  try {
-    const snap = await getDocs(collection(db, 'users', userId, 'chatMessages'));
-    const messages = [];
-    snap.forEach((docSnap) => {
-      messages.push(docSnap.data());
-    });
-    // Sort chronologically by timestamp
-    messages.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
-    return messages;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
-    return [];
-  }
-}
-
-export async function saveFirestoreChatMessage(userId, message) {
-  if (!userId || !message || !message.id) return;
-  const docId = String(message.id);
-  const path = `users/${userId}/chatMessages/${docId}`;
-  try {
-    const payload = {
-      id: docId,
-      userId,
-      role: message.role || 'user',
-      text: message.text || '',
-      timestamp: message.timestamp || new Date().toISOString(),
-    };
-    await setDoc(doc(db, 'users', userId, 'chatMessages', docId), payload);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
-  }
-}
-
-export async function clearFirestoreChatMessages(userId) {
-  if (!userId) return;
-  const path = `users/${userId}/chatMessages`;
-  try {
-    const snap = await getDocs(collection(db, 'users', userId, 'chatMessages'));
-    const deletePromises = [];
-    snap.forEach((docSnap) => {
-      deletePromises.push(deleteDoc(docSnap.ref));
-    });
-    await Promise.all(deletePromises);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
